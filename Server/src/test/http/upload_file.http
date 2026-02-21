@@ -1,0 +1,14 @@
+### 1. Upload a .mat File
+POST http://localhost:8080/api/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="WHU_Hi_HongHu.mat"
+Content-Type: application/octet-stream
+
+< C:\Development\demos\hsi-reader\datasets\WHU-Hi-HongHu\WHU_Hi_HongHu.mat
+--WebAppBoundary--
+
+### 2. Download/Serve the File (using RequestParam)
+GET http://localhost:8080/api/upload?filename=WHU_Hi_HongHu.mat
+Accept: application/octet-stream

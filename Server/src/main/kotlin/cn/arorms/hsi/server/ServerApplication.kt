@@ -1,4 +1,4 @@
-package cn.arorms.his.server
+package cn.arorms.hsi.server
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication

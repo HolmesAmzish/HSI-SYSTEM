@@ -1,4 +1,4 @@
-package cn.arorms.his.server
+package cn.arorms.hsi.server
 
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
