@@ -1,3 +1,7 @@
-0.0.1
+0.2.0
+1. Add basic entity definition
+2. Add redis mq(message queue) to service
+
+0.1.0
 1. Rename the project
 2. Add file uploading api
