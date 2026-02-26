@@ -14,20 +14,34 @@ data class HyperspectralImage(
     var filename: String = "",
 
     @Enumerated(EnumType.STRING)
-    var status: ProcessStatus? = null,
+    var status: ProcessStatus? = ProcessStatus.PENDING,
 
     // File name included
     @Column(nullable = false, comment = "MAT file")
-    var matlabFilePath: String = "",
-
+    var matPath: String = "",
     @Column(comment = "BIN file")
-    var binaryFilePath: String? = null,
+    var binPath: String? = null,
 
+    // Ready for file duplicated check
+    @Column(comment = "hash of file header 1MB")
+    var headerHash: String? = null,
+
+    // TODO: Add a overview picture for fake coloured hsi display
     @Column(comment = "JPG file for fake coloured image")
-    var overviewPicturePath: String? = null
-) {
-    constructor(filename: String, matlabFilePath: String) : this() {
+    var overviewPicturePath: String? = null,
+
+    // Metadata line from matlab file header
+    var metadata: String? = null,
+
+    // Size and shape
+    var fileSize: Long? = null,
+    var height: Int? = null,
+    var width: Int? = null,
+    var bands: Int? = null,
+
+    ) {
+    constructor(filename: String, matPath: String) : this() {
         this.filename = filename
-        this.matlabFilePath = matlabFilePath
+        this.matPath = matPath
     }
 }

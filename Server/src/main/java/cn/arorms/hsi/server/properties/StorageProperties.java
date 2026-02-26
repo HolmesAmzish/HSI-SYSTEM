@@ -13,14 +13,26 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties("storage")
 public class StorageProperties {
     // Folder location for storing files
-    @Value("${app.upload.location}")
-    private String location;
+    @Value("${application.share.location}")
+    private String rootLocation;
 
-    public String getLocation() {
-        return location;
+    public String getRootLocation() {
+        return rootLocation;
     }
 
-    public void setLocation() {
-        this.location = location;
-    }
+//    public String getHsiMatDirectory() {
+//        return rootLocation + "/mat/hsi";
+//    }
+//
+//    public String getHsiBinDirectory() {
+//        return rootLocation + "/bin/hsi";
+//    }
+//
+//    public String getGtMatDirectory() {
+//        return rootLocation + "/mat/gt";
+//    }
+//
+//    public String getGtBinDirectory() {
+//        return rootLocation + "/bin/gt";
+//    }
 }

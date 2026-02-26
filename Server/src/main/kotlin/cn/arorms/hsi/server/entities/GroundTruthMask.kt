@@ -17,7 +17,11 @@ data class GroundTruthMask(
     var filename: String = "",
 
     @Column(comment = "GT MAT file.")
-    var filePath: String = ""
+    var filePath: String = "",
+
+    @ManyToOne
+    @JoinColumn(name = "hsi_id", nullable = false, comment = "Hyperspectral Image id")
+    var image: HyperspectralImage? = null,
 ) {
     constructor(filename: String, filePath: String) : this() {
         this.filename = filename

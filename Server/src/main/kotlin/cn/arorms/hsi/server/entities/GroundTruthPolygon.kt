@@ -11,8 +11,8 @@ data class GroundTruthPolygon(
     var id: Long? = null,
 
     @ManyToOne
-    @JoinColumn(name = "hsi_id", nullable = false, comment = "Hyperspectral Image id")
-    var image: HyperspectralImage? = null,
+    @JoinColumn(name = "gt_mask_id", nullable = false, comment = "Hyperspectral Image id")
+    var gtMask: GroundTruthMask? = null,
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "label_id", nullable = false)
@@ -21,10 +21,4 @@ data class GroundTruthPolygon(
     // We store every patch of the segmentation instance to the database
     @Column(columnDefinition = "geometry(MultiPolygon, 0)", nullable = false)
     var geometry: Geometry? = null
-) {
-    constructor(image: HyperspectralImage?, label: SegmentationLabel?, geometry: Geometry?) : this() {
-        this.image = image
-        this.label = label
-        this.geometry = geometry
-    }
-}
+)

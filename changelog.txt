@@ -1,3 +1,6 @@
+0.2.1
+1. Add HSI mat file uploading and database record
+
 0.2.0
 1. Add basic entity definition
 2. Add redis mq(message queue) to service
