@@ -37,7 +37,7 @@ public class HsiLoadResultHandler implements ResultHandler<HsiLoadResult> {
         log.info("Processing HSI_LOAD result for task: {}", taskId);
         
         try {
-            hyperspectralImageService.processLoadResult(envelope);
+            hyperspectralImageService.processMqLoadResult(envelope);
             log.info("HSI_LOAD result processed successfully for task: {}", taskId);
         } catch (Exception e) {
             log.error("Failed to process HSI_LOAD result for task: {}", taskId, e);

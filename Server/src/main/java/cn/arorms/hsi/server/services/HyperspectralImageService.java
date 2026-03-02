@@ -6,20 +6,22 @@ import cn.arorms.hsi.server.dtos.mq.ResultEnvelope;
 import cn.arorms.hsi.server.entities.HyperspectralImage;
 import cn.arorms.hsi.server.enums.FileType;
 import cn.arorms.hsi.server.enums.ProcessStatus;
+import cn.arorms.hsi.server.exceptions.InvalidMessageException;
 import cn.arorms.hsi.server.services.mq.TaskQueueSender;
 import cn.arorms.hsi.server.repositories.HyperspectralImageRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.NoSuchElementException;
 
 @Service
 public class HyperspectralImageService {
@@ -45,84 +47,43 @@ public class HyperspectralImageService {
      *
      * @param envelope Result envelope containing task result
      */
-    public void processLoadResult(ResultEnvelope<HsiLoadResult> envelope) {
+    public void processMqLoadResult(ResultEnvelope<HsiLoadResult> envelope) {
         HsiLoadResult result = envelope.getData();
         String taskId = envelope.getTaskId();
         
         logger.info("Processing HSI_LOAD result for task: {}", taskId);
-        
-        try {
-            // Normalize path separators (Python on Windows may use backslashes)
-            String normalizedBinaryPath = result.getBinaryPath().replace('\\', '/');
-            
-            // Resolve relative path to absolute path
-            String absoluteBinPath = resolveRelativePath(normalizedBinaryPath);
-            
-            // Validate the binary file exists
-            File binaryFile = new File(absoluteBinPath);
-            if (!binaryFile.exists()) {
-                logger.error("Binary file not found: {}", absoluteBinPath);
-                throw new IllegalStateException("Binary file not found: " + absoluteBinPath);
-            }
-            
-            // Find the hyperspectral image by MAT path and update it
-            // The MAT path is stored in the entity when the file was uploaded
-            // Binary path is like: bin/hsi/Dioni.bin
-            // MAT path is like: mat/hsi/Dioni.mat
-            String filename = Path.of(normalizedBinaryPath).getFileName().toString();
-            String matPath = "mat/hsi/" + filename.replace(".bin", ".mat");
-            
-            hsiRepository.findByMatPath(matPath).ifPresentOrElse(hsi -> {
-                hsi.setBinPath(absoluteBinPath);
-                hsi.setHeight(result.getHeight());
-                hsi.setWidth(result.getWidth());
-                hsi.setBands(result.getBands());
-                hsi.setDataType(result.getDataType());
-                hsi.setFileSize(result.getFileSize());
-                hsi.setProcessedAt(LocalDateTime.now());
-                hsi.setStatus(ProcessStatus.COMPLETED);
-                hsiRepository.save(hsi);
-                
-                logger.info("HSI_LOAD result processed successfully. Image updated: {}x{}x{}, file: {}", 
-                        result.getHeight(), result.getWidth(), result.getBands(), absoluteBinPath);
-            }, () -> {
-                // If no existing entity found, create a new one
-                logger.warn("No existing HSI entity found for MAT path: {}, creating new one", matPath);
-                HyperspectralImage newHsi = new HyperspectralImage();
-                newHsi.setFilename(Path.of(absoluteBinPath).getFileName().toString());
-                newHsi.setMatPath(matPath);
-                newHsi.setBinPath(absoluteBinPath);
-                newHsi.setHeight(result.getHeight());
-                newHsi.setWidth(result.getWidth());
-                newHsi.setBands(result.getBands());
-                newHsi.setDataType(result.getDataType());
-                newHsi.setFileSize(result.getFileSize());
-                newHsi.setProcessedAt(LocalDateTime.now());
-                newHsi.setStatus(ProcessStatus.COMPLETED);
-                hsiRepository.save(newHsi);
-                
-                logger.info("New HSI entity created: {}x{}x{}, file: {}", 
-                        result.getHeight(), result.getWidth(), result.getBands(), absoluteBinPath);
-            });
-            
-        } catch (Exception e) {
-            logger.error("Failed to process HSI_LOAD result for task: {}", taskId, e);
-            throw e;
+
+        Long hsiId = result.getHsiId();
+
+        // Normalize path separators (Python on Windows may use backslashes)
+        String normalizedBinaryPath = result.getBinaryPath().replace('\\', '/');
+
+        // Resolve relative path to absolute path
+        if (!storageService.exists(result.getBinaryPath())) {
+            throw new InvalidMessageException("The hsi load result binary file path does not exist.");
         }
-    }
-    
-    /**
-     * Resolve relative path to absolute path based on shared data location.
-     *
-     * @param relativePath Relative path from Python worker
-     * @return Absolute path
-     */
-    private String resolveRelativePath(String relativePath) {
-        Path path = Paths.get(relativePath);
-        if (path.isAbsolute()) {
-            return path.toString();
-        }
-        return Paths.get(sharedDataLocation, relativePath).toString();
+
+        // Find the hyperspectral image by hsi id and update it
+        // The MAT path is stored in the entity when the file was uploaded
+        // Binary path is like: bin/hsi/Dioni.bin
+
+        hsiRepository.findById(hsiId).ifPresentOrElse(hsi -> {
+            hsi.setBinPath(normalizedBinaryPath);
+            hsi.setHeight(result.getHeight());
+            hsi.setWidth(result.getWidth());
+            hsi.setBands(result.getBands());
+            hsi.setDataType(result.getDataType());
+            hsi.setFileSize(result.getFileSize());
+            hsi.setProcessedAt(LocalDateTime.now());
+            hsi.setStatus(ProcessStatus.COMPLETED);
+            hsiRepository.save(hsi);
+
+            logger.info("HSI_LOAD result processed successfully. Image updated: {}x{}x{}, file: {}",
+                    result.getHeight(), result.getWidth(), result.getBands(), normalizedBinaryPath);}, () -> {
+            // If no existing entity found
+            throw new InvalidMessageException("No existing HSI entity found for HSI id: " + hsiId);
+        });
+
     }
 
     /**
@@ -146,7 +107,7 @@ public class HyperspectralImageService {
         String filename = file.getOriginalFilename();
         Long fileSize = file.getSize();
 
-        logger.debug("File upload request: filename: {}, size: {} bytes, path: {}",
+        logger.info("File upload request: filename: {}, size: {} bytes, path: {}",
                 filename, fileSize, matPath);
 
         var hsi = new HyperspectralImage();
@@ -154,9 +115,16 @@ public class HyperspectralImageService {
         hsi.setFilename(filename);
         hsi.setFileSize(fileSize);
         hsi.setMatPath(matPath);
-        hsiRepository.save(hsi);
-
+        var savedHsi = hsiRepository.save(hsi);
+        Long hsiId = savedHsi.getId();
         // Send load task to message queue
-        taskQueueSender.sendHsiLoadTask(matPath);
+        taskQueueSender.sendHsiLoadTask(hsiId, matPath);
+    }
+
+    public Resource downloadHsiBinFile(Long hsiId) {
+        var hsi = hsiRepository.findById(hsiId)
+                .orElseThrow(() -> new NoSuchElementException("HSI not found with ID: " + hsiId));
+        String filepath = hsi.getBinPath();
+        return storageService.loadAsResource(filepath, FileType.HSI_BIN);
     }
 }

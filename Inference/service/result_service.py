@@ -68,13 +68,14 @@ class ResultService:
             )
 
             # Serialize to JSON and push to result queue
-            # The model_dump includes @class type hints for Jackson deserialization
             envelope_dict = envelope.model_dump(mode="json")
-            self.redis_client.lpush(self.result_queue, json.dumps(envelope_dict))
+            result_json = json.dumps(envelope_dict)
+            self.redis_client.lpush(self.result_queue, result_json)
 
             logger.info(
                 f"Published success result for task {task_id} ({task_type}) to {self.result_queue}"
             )
+            logger.info(f"Result payload: {result_json}")
             return True
 
         except Exception as e:
@@ -118,14 +119,14 @@ class ResultService:
             )
 
             # Serialize to JSON and push to result queue
-            # The model_dump includes @class type hints for Jackson deserialization
             envelope_dict = envelope.model_dump(mode="json")
-            self.redis_client.lpush(self.result_queue, json.dumps(envelope_dict))
+            result_json = json.dumps(envelope_dict)
+            self.redis_client.lpush(self.result_queue, result_json)
 
             logger.info(
                 f"Published failure result for task {task_id} ({task_type}) to {self.result_queue}"
             )
-            logger.debug(f"Serialized result: {json.dumps(envelope_dict)}")
+            logger.info(f"Result payload: {result_json}")
             return True
 
         except Exception as e:

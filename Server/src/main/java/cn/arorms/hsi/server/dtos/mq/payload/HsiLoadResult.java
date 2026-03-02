@@ -8,6 +8,7 @@ package cn.arorms.hsi.server.dtos.mq.payload;
  * @version 1.0 2026-02-27
  */
 public class HsiLoadResult extends ResultPayload {
+    private Long hsiId;
     private Integer height;
     private Integer width;
     private Integer bands;
@@ -18,13 +19,22 @@ public class HsiLoadResult extends ResultPayload {
     public HsiLoadResult() {
     }
 
-    public HsiLoadResult(Integer height, Integer width, Integer bands, String binaryPath, String dataType, Long fileSize) {
+    public HsiLoadResult(Long hsiId, Integer height, Integer width, Integer bands, String binaryPath, String dataType, Long fileSize) {
+        this.hsiId = hsiId;
         this.height = height;
         this.width = width;
         this.bands = bands;
         this.binaryPath = binaryPath;
         this.dataType = dataType;
         this.fileSize = fileSize;
+    }
+
+    public Long getHsiId() {
+        return hsiId;
+    }
+
+    public void setHsiId(Long hsiId) {
+        this.hsiId = hsiId;
     }
 
     public Integer getHeight() {

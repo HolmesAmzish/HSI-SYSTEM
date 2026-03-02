@@ -1,3 +1,11 @@
+0.3.0
+1. Give database entity id to the mq when calling back
+2. Read bin file from api in web
+
+0.2.2
+1. Cancel the task type route to redis key
+2. Simplify server by migrating back to pure java
+
 0.2.1
 1. Add HSI mat file uploading and database record
 

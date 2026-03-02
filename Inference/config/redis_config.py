@@ -5,7 +5,7 @@ from typing import Optional
 class RedisConfig(BaseSettings):
     """Redis configuration based on Server project application.properties."""
 
-    REDIS_HOST: str = Field(default="192.168.0.110", validation_alias="REDIS_HOST")
+    REDIS_HOST: str = Field(default="192.168.0.190", validation_alias="REDIS_HOST")
     REDIS_PORT: int = Field(default=6379, validation_alias="REDIS_PORT")
     REDIS_PASSWORD: Optional[str] = Field(default=None, validation_alias="REDIS_PASSWORD")
     REDIS_DB: int = Field(default=0, validation_alias="REDIS_DB")

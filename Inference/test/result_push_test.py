@@ -6,6 +6,12 @@ Directly inserts a pre-defined result for testing purposes.
 import json
 import logging
 from datetime import datetime
+from pathlib import Path
+
+# Load environment variables from .env file first
+from dotenv import load_dotenv
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(env_path)
 
 from core.dependencies import get_redis_client
 from models.result import (
@@ -40,7 +46,7 @@ def test_push_hsi_load_result():
 
     # Create ResultEnvelope
     envelope = ResultEnvelope(
-        taskId="7b34c7c5-7be5-4781-a6bd-6a6afa3f52bc",
+        taskId="7b34c7c5-7be5-4781-a6bd-6a623a3f52bc",
         timestamp=datetime.fromisoformat("2026-03-01T22:57:08.698751"),
         type="HSI_LOAD",
         status=TaskStatus.COMPLETED,

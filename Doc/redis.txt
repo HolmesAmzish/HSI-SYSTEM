@@ -1,0 +1,10 @@
+{
+    "@class":"cn.arorms.hsi.server.dtos.mq.TaskEnvelope",
+    "data":{
+        "@class":"cn.arorms.hsi.server.dtos.mq.payload.HsiLoadTask",
+        "filePath":"mat/hsi/Dioni.mat"
+    },
+    "taskId":"65f13797-2dae-4099-bb02-0a3e29921ec5",
+    "timestamp":"2026-03-01T18:15:19.0530275",
+    "type":"HSI_LOAD"
+}

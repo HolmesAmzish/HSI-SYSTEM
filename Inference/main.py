@@ -1,71 +1,228 @@
-import pika
+"""
+Main entry point for HSI Inference Worker.
+Listens to Redis MQ task queues and processes tasks.
+
+This worker listens to three task queues:
+- hsi:queue:hsi-load: For loading HSI MAT files
+- hsi:queue:hsi-inference: For HSI inference tasks
+- hsi:queue:gt-load: For loading ground truth MAT files
+
+All results are published to a single shared queue:
+- hsi:queue:task-result
+"""
+
+import logging
 import json
-import os
-from config import RABBITMQ_HOST, TASK_QUEUE, RESULT_QUEUE, OUTPUT_DIR
-from mat_service import MatService
+import signal
+import sys
+from datetime import datetime
+from pathlib import Path
+from redis import Redis
+from typing import Optional
+
+from config.settings import settings
+from core.dependencies import get_redis_client
+from models.task import TaskEnvelope, TaskType, HsiLoadPayload
+from models.result import HsiLoadResult
+from handlers.hsi_load_handler import HsiLoadHandler
+from service.result_service import ResultService
 
 
-def on_request(ch, method, props, body):
-    """消息回调处理函数"""
-    try:
-        # 1. 解析任务指令 (来自 Java)
-        # 预期格式: {"taskId": "123", "filePath": "C:/.../test.mat"}
-        task = json.loads(body)
-        task_id = task.get("taskId")
-        mat_path = task.get("filePath")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
-        print(f" [INFO] 开始处理任务: {task_id}")
 
-        # 2. 准备输出路径
-        bin_filename = f"{task_id}.bin"
-        bin_path = OUTPUT_DIR / bin_filename
+class TaskWorker:
+    """
+    Main worker class that listens to Redis task queues and processes tasks.
+    
+    The worker uses blocking list operations (BLPOP) to efficiently wait for
+    new tasks while supporting graceful shutdown.
+    """
 
-        # 3. 调用 Service 执行转换
-        metadata = MatService.process_mat(mat_path, bin_path)
+    def __init__(self):
+        """Initialize the task worker with Redis connection and handlers."""
+        self.redis_client: Redis = get_redis_client()
+        self.result_service = ResultService(self.redis_client)
+        self.hsi_load_handler = HsiLoadHandler()
+        
+        # Task queue names
+        self.task_queues = [
+            settings.REDIS_QUEUE_HSI_LOAD,
+            settings.REDIS_QUEUE_HSI_INFERENCE,
+            settings.REDIS_QUEUE_GT_LOAD,
+        ]
+        
+        # Output directory for binary files
+        self.output_dir = settings.BIN_DIR / "hsi"
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Shutdown flag
+        self._shutdown_requested = False
 
-        # 4. 构建结果消息回传给 Java
-        result = {
-            "taskId": task_id,
-            "status": "COMPLETED",
-            "binPath": str(bin_path).replace("\\", "/"),
-            "height": metadata["height"],
-            "width": metadata["width"],
-            "bands": metadata["bands"]
-        }
+    def start(self) -> None:
+        """
+        Start the task worker loop.
+        
+        Uses BLPOP to blockingly wait for tasks from any of the task queues.
+        Processes tasks until shutdown is requested.
+        """
+        logger.info("Starting HSI Inference Worker...")
+        logger.info(f"Listening to task queues: {self.task_queues}")
+        logger.info(f"Publishing results to: {settings.REDIS_QUEUE_RESULT}")
+        logger.info(f"Output directory: {self.output_dir}")
 
-        # 5. 发送回结果队列
-        ch.basic_publish(
-            exchange='',
-            routing_key=RESULT_QUEUE,
-            body=json.dumps(result)
-        )
-        print(f" [SUCCESS] 任务 {task_id} 完成，已回传结果。")
+        # Setup signal handlers for graceful shutdown
+        signal.signal(signal.SIGINT, self._request_shutdown)
+        signal.signal(signal.SIGTERM, self._request_shutdown)
 
-    except Exception as e:
-        print(f" [ERROR] 处理失败: {str(e)}")
-        # 错误回传逻辑可在此补充
+        while not self._shutdown_requested:
+            try:
+                # Block waiting for task from any queue (timeout for shutdown check)
+                result = self.redis_client.blpop(self.task_queues, timeout=1)
+                
+                if result is None:
+                    # Timeout, check shutdown flag and continue
+                    continue
 
-    finally:
-        # 确认消息已被处理
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+                queue_name = result[0]
+                message_data = result[1]
+                
+                # Decode message if bytes
+                if isinstance(message_data, bytes):
+                    message_data = message_data.decode("utf-8")
+
+                logger.info(f"Received task from queue: {queue_name}")
+                
+                # Process the task
+                self._process_task(message_data, queue_name)
+
+            except Exception as e:
+                logger.error(f"Error in worker loop: {e}", exc_info=True)
+
+        logger.info("Worker shutdown complete.")
+
+    def _request_shutdown(self, signum, frame) -> None:
+        """Handle shutdown signal."""
+        logger.info("Shutdown requested, finishing current task...")
+        self._shutdown_requested = True
+
+    def _process_task(self, message_data: str, queue_name: str) -> None:
+        """
+        Process a task message from the queue.
+        
+        Args:
+            message_data: JSON-encoded task envelope
+            queue_name: Name of the queue the message came from
+        """
+        try:
+            # Parse task envelope
+            envelope_dict = json.loads(message_data)
+            task_envelope = self._parse_envelope(envelope_dict)
+            
+            task_id = task_envelope.taskId
+            task_type = task_envelope.type
+            
+            logger.info(f"Processing task {task_id} of type {task_type.value}")
+
+            # Route to appropriate handler based on task type
+            if task_type == TaskType.HSI_LOAD:
+                self._handle_hsi_load(task_id, task_envelope.data)
+            elif task_type == TaskType.HSI_INFERENCE:
+                logger.warning(f"HSI_INFERENCE task {task_id} received but not yet implemented")
+            elif task_type == TaskType.GT_LOAD:
+                logger.warning(f"GT_LOAD task {task_id} received but not yet implemented")
+            else:
+                logger.error(f"Unknown task type: {task_type}")
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse task message: {e}")
+        except Exception as e:
+            logger.error(f"Failed to process task: {e}", exc_info=True)
+
+    def _parse_envelope(self, envelope_dict: dict) -> TaskEnvelope:
+        """
+        Parse a task envelope from dictionary.
+        
+        Args:
+            envelope_dict: Dictionary containing task envelope data
+            
+        Returns:
+            Parsed TaskEnvelope object
+        """
+        # Parse timestamp string to datetime
+        timestamp_str = envelope_dict.get("timestamp")
+        if isinstance(timestamp_str, str):
+            # Handle ISO format timestamp
+            try:
+                envelope_dict["timestamp"] = datetime.fromisoformat(
+                    timestamp_str.replace("Z", "+00:00")
+                )
+            except ValueError:
+                envelope_dict["timestamp"] = datetime.now()
+        
+        return TaskEnvelope(**envelope_dict)
+
+    def _handle_hsi_load(self, task_id: str, payload: HsiLoadPayload) -> None:
+        """
+        Handle HSI_LOAD task type.
+        
+        Args:
+            task_id: Unique task identifier
+            payload: HSI load task payload
+        """
+        try:
+            # Process the MAT file
+            result = self.hsi_load_handler.handle(
+                task_id=task_id,
+                payload=payload,
+                output_dir=self.output_dir,
+            )
+            
+            # Publish success result
+            self.result_service.publish_success(
+                task_id=task_id,
+                task_type=TaskType.HSI_LOAD.value,
+                result_data=result,
+            )
+            
+        except ValueError as e:
+            logger.error(f"Invalid MAT file for task {task_id}: {e}")
+            self.result_service.publish_failure(
+                task_id=task_id,
+                task_type=TaskType.HSI_LOAD.value,
+                error_code="INVALID_MAT_FILE",
+                error_message=str(e),
+            )
+        except IOError as e:
+            logger.error(f"IO error for task {task_id}: {e}")
+            self.result_service.publish_failure(
+                task_id=task_id,
+                task_type=TaskType.HSI_LOAD.value,
+                error_code="IO_ERROR",
+                error_message=str(e),
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error for task {task_id}: {e}", exc_info=True)
+            self.result_service.publish_failure(
+                task_id=task_id,
+                task_type=TaskType.HSI_LOAD.value,
+                error_code="INTERNAL_ERROR",
+                error_message=f"Unexpected error: {str(e)}",
+                stack_trace=str(e),
+            )
 
 
 def main():
-    # 建立连接
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-
-    # 声明队列
-    channel.queue_declare(queue=TASK_QUEUE, durable=True)
-    channel.queue_declare(queue=RESULT_QUEUE, durable=True)
-
-    # 公平分发：一次只给一个任务，处理完再给下一个
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue=TASK_QUEUE, on_message_callback=on_request)
-
-    print(f" [*] HSI Worker 已启动，监听队列: {TASK_QUEUE}")
-    channel.start_consuming()
+    """Main entry point."""
+    worker = TaskWorker()
+    worker.start()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

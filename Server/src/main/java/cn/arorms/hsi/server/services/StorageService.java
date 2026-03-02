@@ -55,6 +55,12 @@ public class StorageService {
         return store(file, targetDir);
     }
 
+    /**
+     * Basic method
+     * @param file multipart file
+     * @param targetDirectory absolute directory
+     * @return the absolute path of file
+     */
     public String store(MultipartFile file, Path targetDirectory) {
         if (file.isEmpty()) {
             throw new StorageException("Failed to store empty file.");
@@ -89,17 +95,17 @@ public class StorageService {
         }
     }
 
-    public Stream<Path> loadAll() {
-        try {
-            return Files.walk(this.rootLocation, 1)
-                    .filter(path -> !path.equals(this.rootLocation))
-                    .map(this.rootLocation::relativize);
-        }
-        catch (IOException e) {
-            throw new StorageException("Failed to read stored files", e);
-        }
-
-    }
+//    public Stream<Path> loadAll() {
+//        try {
+//            return Files.walk(this.rootLocation, 1)
+//                    .filter(path -> !path.equals(this.rootLocation))
+//                    .map(this.rootLocation::relativize);
+//        }
+//        catch (IOException e) {
+//            throw new StorageException("Failed to read stored files", e);
+//        }
+//
+//    }
 
     public Path load(String filename) {
         return rootLocation.resolve(filename);
@@ -123,6 +129,34 @@ public class StorageService {
         }
     }
 
+    /**
+     * Load a file as Resource by relative path and file type.
+     * @param relativePath relative path to the file (e.g., "bin/hsi/Dioni.bin")
+     * @param fileType file type enum (HSI_BIN, HSI_MAT, etc.)
+     * @return Resource for streaming
+     */
+    public Resource loadAsResource(String relativePath, FileType fileType) {
+        try {
+            // Resolve the full path: rootLocation/fileType.getPath()/filename
+            Path filePath = rootLocation.resolve(fileType.getPath())
+                    .resolve(Paths.get(relativePath).getFileName())
+                    .normalize()
+                    .toAbsolutePath();
+            
+            Resource resource = new UrlResource(filePath.toUri());
+            if (resource.exists() || resource.isReadable()) {
+                return resource;
+            } else {
+                throw new StorageFileNotFoundException(
+                        "Could not read file: " + relativePath);
+            }
+        } catch (MalformedURLException e) {
+            throw new StorageFileNotFoundException("Could not read file: " + relativePath, e);
+        }
+    }
+
+
+
     public void deleteAll() {
         FileSystemUtils.deleteRecursively(rootLocation.toFile());
     }
@@ -137,7 +171,7 @@ public class StorageService {
     }
 
     // TODO: Check file duplication before storage
-    private String calculateHeaderHash(MultipartFile file) throws Exception {
+    public String calculateHeaderHash(MultipartFile file) throws Exception {
         long fileSize = file.getSize();
         // Get header content of file for 1MB
         int bufferSize = (int) Math.min(fileSize, 1048576);
@@ -154,5 +188,22 @@ public class StorageService {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
+    }
+
+    /**
+     * Check whether the file exists
+     * @param relativePath relative path to the file
+     * @return if the file exists
+     */
+    public Boolean exists(String relativePath) {
+        if (relativePath == null) {
+            return false;
+        }
+        try {
+            Path filepath = this.rootLocation.resolve(relativePath);
+            return Files.exists(filepath);
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

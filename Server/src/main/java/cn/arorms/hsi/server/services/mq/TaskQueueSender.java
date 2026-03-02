@@ -59,9 +59,9 @@ public class TaskQueueSender {
      * @param filePath Path to the HSI file
      * @return Task ID
      */
-    public String sendHsiLoadTask(String filePath) {
+    public String sendHsiLoadTask(Long hsiId, String filePath) {
         log.debug("Sending HSI_LOAD task for file: {}", filePath);
-        return sendTask(TaskType.HSI_LOAD, new HsiLoadTask(filePath));
+        return sendTask(TaskType.HSI_LOAD, new HsiLoadTask(hsiId, filePath));
     }
 
     /**
@@ -71,7 +71,8 @@ public class TaskQueueSender {
      * @param dataset Dataset information
      * @return Task ID
      */
-    public String sendHsiInferenceTask(String filePath, Dataset dataset) {
+    // TODO: Add database object ID for update when calling back
+    public String sendHsiInferenceTask(Long hsiId, String filePath, Dataset dataset) {
         log.debug("Sending HSI_INFERENCE task for file: {}", filePath);
         return sendTask(TaskType.HSI_INFERENCE, new HsiInferenceTask(filePath, dataset));
     }
@@ -83,7 +84,7 @@ public class TaskQueueSender {
      * @param dataset Dataset information
      * @return Task ID
      */
-    public String sendGtLoadTask(String filePath, Dataset dataset) {
+    public String sendGtLoadTask(Long gtId, String filePath, Dataset dataset) {
         log.debug("Sending GT_LOAD task for file: {}", filePath);
         return sendTask(TaskType.GT_LOAD, new GtLoadTask(filePath, dataset));
     }
