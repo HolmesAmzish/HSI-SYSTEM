@@ -1,0 +1,21 @@
+### Upload HSI MAT File(V5)
+POST http://localhost:8080/api/hsi/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="Dioni.mat"
+Content-Type: application/octet-stream
+
+< C:\Development\dataset\HyperspectralImage\dataset1\HyRANK\Dioni.mat
+--WebAppBoundary--
+
+### Upload HSI MAT File(V7.3)
+POST http://localhost:8080/api/hsi/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="Houston13.mat"
+Content-Type: application/octet-stream
+
+< C:\Development\dataset\HyperspectralImage\dataset1\Houston\Houston13.mat
+--WebAppBoundary--

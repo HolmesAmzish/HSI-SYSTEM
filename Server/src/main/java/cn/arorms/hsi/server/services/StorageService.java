@@ -47,6 +47,7 @@ public class StorageService {
      * Primary file store method, the path determined by file type
      * @param file multipart file
      * @param fileType mat or bin file of hsi and gt
+     * @return relative path to the file
      */
     public String store(MultipartFile file, FileType fileType) {
 
@@ -81,6 +82,7 @@ public class StorageService {
         try (InputStream inputStream = file.getInputStream()) {
             Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
             return rootLocation.toAbsolutePath().relativize(destinationFile)
+//            return destinationFile
                     .toString().replace('\\', '/');
         } catch (IOException e) {
             throw new StorageException("Failed to store file.", e);

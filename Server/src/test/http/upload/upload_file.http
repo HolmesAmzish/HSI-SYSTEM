@@ -1,0 +1,9 @@
+POST http://localhost:8080/api/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="README.md"
+Content-Type: image/png
+
+< C:\Development\repositories\HSI-SYSTEM\README.md
+--WebAppBoundary--

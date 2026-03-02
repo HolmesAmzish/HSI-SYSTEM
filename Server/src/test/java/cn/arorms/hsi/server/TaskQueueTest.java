@@ -1,7 +1,7 @@
 package cn.arorms.hsi.server;
 
 import cn.arorms.hsi.server.entities.Dataset;
-import cn.arorms.hsi.server.services.TaskQueueService;
+import cn.arorms.hsi.server.services.MessageQueueService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,10 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest
-class TaskQueueServiceTest {
+class MessageQueueServiceTest {
 
     @Autowired
-    private TaskQueueService taskQueueService;
+    private MessageQueueService messageQueueService;
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
@@ -31,16 +31,16 @@ class TaskQueueServiceTest {
         redisTemplate.delete(List.of(QUEUE_LOAD, QUEUE_INFERENCE, QUEUE_GT));
 
         // HSI_LOAD
-        String loadId = taskQueueService.sendHsiLoadTask("/path/to/hsi.mat");
+        String loadId = messageQueueService.sendHsiLoadTask("/path/to/hsi.mat");
         assertNotNull(loadId);
 
         // HSI_INFERENCE
         Dataset mockDataset = new Dataset();
-        String infId = taskQueueService.sendHsiInferenceTask("/path/to/hsi.mat", mockDataset);
+        String infId = messageQueueService.sendHsiInferenceTask("/path/to/hsi.mat", mockDataset);
         assertNotNull(infId);
 
         // GT_LOAD
-        String gtId = taskQueueService.sendGtLoadTask("/path/to/gt.mat", mockDataset);
+        String gtId = messageQueueService.sendGtLoadTask("/path/to/gt.mat", mockDataset);
         assertNotNull(gtId);
 
         // Check Redis queue(list) length
@@ -53,7 +53,7 @@ class TaskQueueServiceTest {
 
     @Test
     void countTaskTest() {
-        Long taskCount = taskQueueService.getQueueSize();
+        Long taskCount = messageQueueService.getQueueSize();
         assertEquals(3, taskCount);
         System.out.println("Tests passed: The number is ok");
     }
