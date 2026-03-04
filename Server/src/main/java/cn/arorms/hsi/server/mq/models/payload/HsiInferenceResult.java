@@ -1,4 +1,4 @@
-package cn.arorms.hsi.server.dtos.mq.payload;
+package cn.arorms.hsi.server.mq.models.payload;
 
 import java.util.Map;
 

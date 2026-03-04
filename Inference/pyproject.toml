@@ -13,4 +13,6 @@ dependencies = [
     "redis>=5.0.0",
     "scikit-learn>=1.8.0",
     "scipy>=1.17.0",
+    "psycopg2-binary>=2.9.0",
+    "sqlalchemy>=2.0.0",
 ]

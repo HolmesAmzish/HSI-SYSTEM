@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.NoSuchElementException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -33,5 +35,10 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.internalServerError().body("Internal error.");
+    }
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<String> handleNoSuchElementError(NoSuchElementException e) {
+        return ResponseEntity.notFound().build();
     }
 }

@@ -30,13 +30,15 @@ class TaskPayload(BaseModel):
 class HsiLoadPayload(TaskPayload):
     """
     Payload for HSI_LOAD task type.
-    Contains the file path to the HSI MAT file and HSI ID.
+    Contains the file path to the HSI MAT file, HSI ID, and dataset ID.
     
     Attributes:
         hsiId: Unique identifier for the HSI dataset
+        datasetId: Unique identifier for the dataset
         filePath: Path to the HSI MAT file to be processed
     """
     hsiId: int = Field(..., description="Unique identifier for the HSI dataset")
+    datasetId: int = Field(..., description="Unique identifier for the dataset")
     filePath: str = Field(..., description="Path to the HSI MAT file")
 
 

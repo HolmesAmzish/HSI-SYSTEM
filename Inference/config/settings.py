@@ -2,6 +2,7 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from .redis_config import RedisConfig
+from .postgres_config import PostgresConfig
 
 
 class Settings(BaseSettings):
@@ -66,6 +67,9 @@ class Settings(BaseSettings):
     )
 
     redis: RedisConfig = RedisConfig()
+
+    # PostgreSQL configuration
+    postgres: PostgresConfig = PostgresConfig()
 
     model_config = SettingsConfigDict(
         env_file="../.env",

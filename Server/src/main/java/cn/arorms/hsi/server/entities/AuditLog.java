@@ -1,6 +1,8 @@
 package cn.arorms.hsi.server.entities;
 
+import cn.arorms.hsi.server.enums.LogLevel;
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 
@@ -10,49 +12,23 @@ import java.time.LocalDateTime;
  * @author Cacciatore
  * @version 1.0 2026-03-01
  */
+@Data
 @Entity
-@Table(name = "system_logs")
+@Table(name = "audit_logs")
 public class AuditLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private LocalDateTime timestamp = LocalDateTime.now();
+    @Enumerated(EnumType.STRING)
+    private LogLevel level;
+
+    private String content;
 
     @ManyToOne
     @JoinColumn(name = "operator_id")
     private User operator;
 
-    public AuditLog() {
-    }
-
-    public AuditLog(User operator) {
-        this.timestamp = LocalDateTime.now();
-        this.operator = operator;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public User getOperator() {
-        return operator;
-    }
-
-    public void setOperator(User operator) {
-        this.operator = operator;
-    }
+    private LocalDateTime timestamp = LocalDateTime.now();
 }

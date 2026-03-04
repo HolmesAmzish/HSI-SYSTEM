@@ -34,6 +34,7 @@ class HsiLoadResult(TaskResult):
     
     Attributes:
         hsiId: Unique identifier for the HSI dataset (echoed from request)
+        datasetId: Unique identifier for the dataset (echoed from request)
         height: Height of the hyperspectral cube (pixels)
         width: Width of the hyperspectral cube (pixels)
         bands: Number of spectral bands
@@ -42,6 +43,7 @@ class HsiLoadResult(TaskResult):
         fileSize: Size of the binary file in bytes
     """
     hsiId: int = Field(..., description="Unique identifier for the HSI dataset")
+    datasetId: int = Field(..., description="Unique identifier for the dataset")
     height: int = Field(..., description="Height of the hyperspectral cube")
     width: int = Field(..., description="Width of the hyperspectral cube")
     bands: int = Field(..., description="Number of spectral bands")

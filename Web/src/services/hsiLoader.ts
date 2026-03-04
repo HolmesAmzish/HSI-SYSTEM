@@ -5,19 +5,21 @@
  * Base URL: http://localhost:8080/api/hsi
  */
 
-import type { HsiData, HsiImageMetadata } from '../types/hsi';
+import type { RgbBandConfig } from '../types/hsi';
 
 const API_BASE_URL = '/api/hsi';
 
 /**
- * Process status enum matching server
+ * Process status matching server
  */
-export enum ProcessStatus {
-  PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED'
-}
+export const ProcessStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED'
+} as const;
+
+export type ProcessStatus = typeof ProcessStatus[keyof typeof ProcessStatus];
 
 /**
  * HSI Image metadata from server
@@ -68,37 +70,6 @@ export async function getHsiList(
 }
 
 /**
- * Load HSI binary data from server by ID
- */
-export async function loadHsiFromServer(id: number): Promise<HsiData> {
-  // First get metadata
-  const listResponse = await getHsiList(0, 100);
-  const imageMeta = listResponse.content.find(img => img.id === id);
-  
-  if (!imageMeta) {
-    throw new Error(`HSI image with ID ${id} not found`);
-  }
-  
-  // Download binary file
-  const response = await fetch(`${API_BASE_URL}/getBin/${id}`);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to load HSI binary: ${response.statusText}`);
-  }
-  
-  const arrayBuffer = await response.arrayBuffer();
-  const cube = new Float32Array(arrayBuffer);
-  
-  return {
-    cube,
-    height: imageMeta.height,
-    width: imageMeta.width,
-    bands: imageMeta.bands,
-    dataType: 'float32'
-  };
-}
-
-/**
  * Upload MAT file to server
  */
 export async function uploadMatFile(file: File): Promise<string> {
@@ -118,42 +89,44 @@ export async function uploadMatFile(file: File): Promise<string> {
 }
 
 /**
- * Load HSI data from local file (fallback method)
+ * Get RGB image URL from server
+ * @param id HSI image ID
+ * @param bandConfig Optional RGB band configuration
  */
-export async function loadFromLocalFile(file: File): Promise<HsiData> {
-  const arrayBuffer = await file.arrayBuffer();
-  const cube = new Float32Array(arrayBuffer);
+export function getHsiRgbImageUrl(
+  id: number,
+  bandConfig?: Partial<RgbBandConfig>
+): string {
+  let url = `${API_BASE_URL}/get-hsi/${id}`;
   
-  const totalValues = cube.length;
-  
-  const commonConfigs = [
-    { height: 150, width: 150, bands: 68 },
-    { height: 610, width: 340, bands: 103 },
-    { height: 145, width: 145, bands: 200 },
-    { height: 256, width: 256, bands: 160 },
-    { height: 400, width: 400, bands: 150 },
-  ];
-  
-  for (const config of commonConfigs) {
-    if (config.height * config.width * config.bands === totalValues) {
-      return {
-        cube,
-        height: config.height,
-        width: config.width,
-        bands: config.bands,
-        dataType: 'float32'
-      };
-    }
+  if (bandConfig?.redBand !== undefined) {
+    url += `?red=${bandConfig.redBand}`;
+  }
+  if (bandConfig?.greenBand !== undefined) {
+    url += `${url.includes('?') ? '&' : '?'}green=${bandConfig.greenBand}`;
+  }
+  if (bandConfig?.blueBand !== undefined) {
+    url += `${url.includes('?') ? '&' : '?'}blue=${bandConfig.blueBand}`;
   }
   
-  const estimatedSize = Math.round(Math.cbrt(totalValues));
-  const bands = Math.round(totalValues / (estimatedSize * estimatedSize));
+  return url;
+}
+
+/**
+ * Get RGB image blob from server
+ * @param id HSI image ID
+ * @param bandConfig Optional RGB band configuration
+ */
+export async function getHsiRgbImage(
+  id: number,
+  bandConfig?: Partial<RgbBandConfig>
+): Promise<Blob> {
+  const url = getHsiRgbImageUrl(id, bandConfig);
+  const response = await fetch(url);
   
-  return {
-    cube,
-    height: estimatedSize,
-    width: estimatedSize,
-    bands,
-    dataType: 'float32'
-  };
+  if (!response.ok) {
+    throw new Error(`Failed to get HSI RGB image: ${response.statusText}`);
+  }
+  
+  return await response.blob();
 }

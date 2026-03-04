@@ -1,6 +1,6 @@
 redis mq 消息队列处理 spring 与 python worker 任务交互
 redis 多队列处理，解耦IO密集与计算密集任务
-利用 redis cache 减轻高光谱图像应用这种大体积数据时的IO性能
+利用 redis cache 减轻高光谱图像应用这种数据时的IO性能
 
 面对多数据集格式不统一，读取不同数据格式并统一格式，解耦元数据和数据格式
 使用 pydantic 规范化 Python 开发

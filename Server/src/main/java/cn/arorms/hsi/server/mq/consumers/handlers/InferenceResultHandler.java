@@ -1,7 +1,7 @@
-package cn.arorms.hsi.server.services.mq.handlers;
+package cn.arorms.hsi.server.mq.consumers.handlers;
 
-import cn.arorms.hsi.server.dtos.mq.payload.HsiInferenceResult;
-import cn.arorms.hsi.server.dtos.mq.ResultEnvelope;
+import cn.arorms.hsi.server.mq.models.payload.HsiInferenceResult;
+import cn.arorms.hsi.server.mq.models.ResultEnvelope;
 import cn.arorms.hsi.server.enums.TaskType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

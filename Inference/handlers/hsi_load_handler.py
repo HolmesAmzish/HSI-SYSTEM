@@ -75,6 +75,7 @@ class HsiLoadHandler:
 
         return HsiLoadResult(
             hsiId=payload.hsiId,
+            datasetId=payload.datasetId,
             height=height,
             width=width,
             bands=bands,

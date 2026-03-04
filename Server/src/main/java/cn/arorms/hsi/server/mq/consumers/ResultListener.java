@@ -1,11 +1,10 @@
-package cn.arorms.hsi.server.services.mq;
+package cn.arorms.hsi.server.mq.consumers;
 
-import cn.arorms.hsi.server.dtos.mq.ResultEnvelope;
-import cn.arorms.hsi.server.dtos.mq.payload.ErrorResult;
-import cn.arorms.hsi.server.dtos.mq.payload.GtLoadResult;
-import cn.arorms.hsi.server.dtos.mq.payload.HsiInferenceResult;
-import cn.arorms.hsi.server.dtos.mq.payload.HsiLoadResult;
-import cn.arorms.hsi.server.dtos.mq.payload.ResultPayload;
+import cn.arorms.hsi.server.mq.models.ResultEnvelope;
+import cn.arorms.hsi.server.mq.models.payload.GtLoadResult;
+import cn.arorms.hsi.server.mq.models.payload.HsiInferenceResult;
+import cn.arorms.hsi.server.mq.models.payload.HsiLoadResult;
+import cn.arorms.hsi.server.mq.models.payload.ResultPayload;
 import cn.arorms.hsi.server.enums.TaskType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -16,7 +15,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

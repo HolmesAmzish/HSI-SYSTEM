@@ -1,33 +1,39 @@
-package cn.arorms.hsi.server.dtos.mq;
+package cn.arorms.hsi.server.mq.models;
 
-import cn.arorms.hsi.server.dtos.mq.payload.ResultPayload;
+import cn.arorms.hsi.server.mq.models.payload.TaskPayload;
 import cn.arorms.hsi.server.enums.TaskType;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
- * Envelope for task results returned from Python workers.
- * Contains task identification, status, timestamp, and result payload.
+ * Envelope for task requests sent to Python workers.
  * 
- * @param <T> Result payload type
+ * @param <T> Task payload type
  * @author Cacciatore
- * @version 1.0 2026-02-27
+ * @version 1.0 2026-03-01
  */
-public class ResultEnvelope<T extends ResultPayload> {
+public class TaskEnvelope<T extends TaskPayload> {
     private String taskId;
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private LocalDateTime timestamp;
     private TaskType type;
-    private String status;
     private T data;
 
-    public ResultEnvelope() {
+    public TaskEnvelope() {
+        this.taskId = UUID.randomUUID().toString();
+        this.timestamp = LocalDateTime.now();
     }
 
-    public ResultEnvelope(String taskId, LocalDateTime timestamp, TaskType type, String status, T data) {
+    public TaskEnvelope(String taskId, LocalDateTime timestamp, TaskType type, T data) {
         this.taskId = taskId;
         this.timestamp = timestamp;
         this.type = type;
-        this.status = status;
+        this.data = data;
+    }
+
+    public TaskEnvelope(TaskType type, T data) {
+        this();
+        this.type = type;
         this.data = data;
     }
 
@@ -53,14 +59,6 @@ public class ResultEnvelope<T extends ResultPayload> {
 
     public void setType(TaskType type) {
         this.type = type;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
     }
 
     public T getData() {

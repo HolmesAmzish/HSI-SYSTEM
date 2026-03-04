@@ -1,9 +1,10 @@
-package cn.arorms.hsi.server.services.mq;
+package cn.arorms.hsi.server.mq.producers;
 
-import cn.arorms.hsi.server.dtos.mq.*;
-import cn.arorms.hsi.server.dtos.mq.payload.*;
 import cn.arorms.hsi.server.entities.Dataset;
 import cn.arorms.hsi.server.enums.TaskType;
+import cn.arorms.hsi.server.mq.models.ResultEnvelope;
+import cn.arorms.hsi.server.mq.models.TaskEnvelope;
+import cn.arorms.hsi.server.mq.models.payload.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -18,7 +19,7 @@ import java.util.UUID;
  * Handles task envelope creation and queue operations.
  * 
  * @author Cacciatore
- * @version 1.0 2026-02-28
+ * @version 1.2 2026-03-04
  */
 @Component
 public class TaskQueueSender {
@@ -59,34 +60,20 @@ public class TaskQueueSender {
      * @param filePath Path to the HSI file
      * @return Task ID
      */
-    public String sendHsiLoadTask(Long hsiId, String filePath) {
+    public String sendHsiLoadTask(Long hsiId, Long datasetId, String filePath) {
         log.debug("Sending HSI_LOAD task for file: {}", filePath);
-        return sendTask(TaskType.HSI_LOAD, new HsiLoadTask(hsiId, filePath));
+        return sendTask(TaskType.HSI_LOAD, new HsiLoadTask(hsiId, datasetId, filePath));
     }
 
-    /**
-     * Send HSI inference task to queue.
-     * 
-     * @param filePath Path to the HSI file
-     * @param dataset Dataset information
-     * @return Task ID
-     */
     // TODO: Add database object ID for update when calling back
     public String sendHsiInferenceTask(Long hsiId, String filePath, Dataset dataset) {
         log.debug("Sending HSI_INFERENCE task for file: {}", filePath);
         return sendTask(TaskType.HSI_INFERENCE, new HsiInferenceTask(filePath, dataset));
     }
 
-    /**
-     * Send GT load task to queue.
-     * 
-     * @param filePath Path to the GT file
-     * @param dataset Dataset information
-     * @return Task ID
-     */
-    public String sendGtLoadTask(Long gtId, String filePath, Dataset dataset) {
+    public String sendGtLoadTask(Long gtId, Long hsiId, String filePath) {
         log.debug("Sending GT_LOAD task for file: {}", filePath);
-        return sendTask(TaskType.GT_LOAD, new GtLoadTask(filePath, dataset));
+        return sendTask(TaskType.GT_LOAD, new GtLoadTask(gtId, hsiId, filePath));
     }
 
     // ==================== Queue Status Methods ====================
