@@ -14,6 +14,32 @@ export interface Dataset {
   id: number;
   name: string;
   description: string;
+  // Dimensions from Python inference result
+  height: number | null;
+  width: number | null;
+  bands: number | null;
+  // User defined band range
+  minBand: number | null;
+  maxBand: number | null;
+  // Default bands for false colored image
+  defaultRed: number | null;
+  defaultGreen: number | null;
+  defaultBlue: number | null;
+}
+
+/**
+ * Form data for creating/updating a dataset with all configurable fields
+ */
+export interface DatasetFormData {
+  name: string;
+  description?: string;
+  // User defined band range
+  minBand?: number | null;
+  maxBand?: number | null;
+  // Default bands for false colored image
+  defaultRed?: number | null;
+  defaultGreen?: number | null;
+  defaultBlue?: number | null;
 }
 
 /**
@@ -45,13 +71,13 @@ export async function getDatasetById(id: number): Promise<Dataset> {
 /**
  * Create a new dataset
  */
-export async function createDataset(dataset: Omit<Dataset, 'id'>): Promise<Dataset> {
+export async function createDataset(formData: DatasetFormData): Promise<Dataset> {
   const response = await fetch(API_BASE_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(dataset),
+    body: JSON.stringify(formData),
   });
   
   if (!response.ok) {

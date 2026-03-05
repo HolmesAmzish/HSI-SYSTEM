@@ -1,12 +1,50 @@
 /**
- * Hyperspectral Image Data Structure
+ * HSI Type Definitions
+ * Matches server HyperspectralImage entity
  */
-export interface HsiData {
-  cube: Float32Array;
-  height: number;
-  width: number;
-  bands: number;
-  dataType: 'float32' | 'float64' | 'int16' | 'uint8';
+
+import type { DatasetInfo } from './dataset';
+
+/**
+ * Process status matching server ProcessStatus enum
+ */
+export const ProcessStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED'
+} as const;
+
+export type ProcessStatus = typeof ProcessStatus[keyof typeof ProcessStatus];
+
+/**
+ * HSI Image metadata from server
+ * Matches server HyperspectralImage entity
+ */
+export interface HsiImage {
+  id: number;
+  filename: string;
+  status: ProcessStatus;
+  matPath: string;
+  binPath: string | null;
+  headerHash: string | null;
+  overviewPicturePath: string | null;
+  dataset: DatasetInfo | null;
+  spatialResolution: number;
+  fileSize: number | null;
+  dataType: string | null;
+  createdAt: string;
+}
+
+/**
+ * Paginated response from server
+ */
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
 }
 
 /**
@@ -16,14 +54,4 @@ export interface RgbBandConfig {
   redBand: number;
   greenBand: number;
   blueBand: number;
-}
-
-/**
- * File metadata from MAT file
- */
-export interface HsiFileMetadata {
-  name: string;
-  path: string;
-  type: 'mat' | 'bin';
-  size?: number;
 }

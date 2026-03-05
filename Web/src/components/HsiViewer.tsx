@@ -1,16 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { getHsiRgbImageUrl, type HsiImageResponse } from '../services/hsiLoader';
-import type { RgbBandConfig } from '../types/hsi';
+import { getHsiRgbImageUrl, calculateDefaultRgbBands, type HsiImage } from '@/services/hsiLoader';
+import type { RgbBandConfig } from '@/types/hsi';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 interface HsiViewerProps {
-  image: HsiImageResponse;
+  image: HsiImage;
 }
 
 const HsiViewer: React.FC<HsiViewerProps> = ({ image }) => {
-  const { height, width, bands } = image;
+  // Get dimensions from dataset (new entity structure)
+  const height = image.dataset?.height ?? null;
+  const width = image.dataset?.width ?? null;
+  const bands = image.dataset?.bands ?? null;
   
-  // Initialize with default bands at 25%, 50%, 75%
+  // Initialize with default bands from dataset or 25%, 50%, 75%
   const [rgbConfig, setRgbConfig] = useState<RgbBandConfig>(() => {
+    if (image.dataset) {
+      return calculateDefaultRgbBands(image.dataset);
+    }
     const bandCount = bands || 100;
     return {
       redBand: Math.floor(bandCount * 0.25),
@@ -19,22 +29,55 @@ const HsiViewer: React.FC<HsiViewerProps> = ({ image }) => {
     };
   });
   
+  // Pending config for slider changes (not applied until confirmed)
+  const [pendingConfig, setPendingConfig] = useState<RgbBandConfig>(rgbConfig);
+  
   const [imageUrl, setImageUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [hasChanges, setHasChanges] = useState(false);
 
+  // Load image when rgbConfig changes (confirmed)
   useEffect(() => {
-    const url = getHsiRgbImageUrl(image.id, rgbConfig);
+    if (!image.dataset) {
+      setError('无数据集信息');
+      return;
+    }
+    const url = getHsiRgbImageUrl(image.id, image.dataset, rgbConfig);
     setImageUrl(url);
     setIsLoading(true);
     setError('');
-  }, [image.id, rgbConfig]);
+  }, [image.id, image.dataset, rgbConfig]);
 
-  const handleBandChange = (channel: 'redBand' | 'greenBand' | 'blueBand', bandIndex: number) => {
-    setRgbConfig(prev => ({
-      ...prev,
-      [channel]: bandIndex
-    }));
+  // Sync pending config when image changes
+  useEffect(() => {
+    if (image.dataset) {
+      const newConfig = calculateDefaultRgbBands(image.dataset);
+      setRgbConfig(newConfig);
+      setPendingConfig(newConfig);
+    }
+    setHasChanges(false);
+  }, [image.id, image.dataset]);
+
+  const handleBandChange = (channel: 'redBand' | 'greenBand' | 'blueBand', value: number[]) => {
+    setPendingConfig(prev => {
+      const newConfig = {
+        ...prev,
+        [channel]: value[0]
+      };
+      // Check if different from current config
+      setHasChanges(
+        newConfig.redBand !== rgbConfig.redBand ||
+        newConfig.greenBand !== rgbConfig.greenBand ||
+        newConfig.blueBand !== rgbConfig.blueBand
+      );
+      return newConfig;
+    });
+  };
+
+  const handleApplyConfig = () => {
+    setRgbConfig(pendingConfig);
+    setHasChanges(false);
   };
 
   const handleImageLoad = () => {
@@ -43,98 +86,130 @@ const HsiViewer: React.FC<HsiViewerProps> = ({ image }) => {
 
   const handleImageError = () => {
     setIsLoading(false);
-    setError('Failed to load image');
+    setError('图像加载失败');
   };
 
   const bandCount = bands || 0;
-  const bandOptions = Array.from({ length: bandCount }, (_, i) => (
-    <option key={i} value={i}>Band {i + 1}</option>
-  ));
 
   return (
     <div className="space-y-4">
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-        {/* Image container */}
-        <div className="flex justify-center">
-          <div className="w-full overflow-auto border border-gray-200 dark:border-gray-700 rounded relative" style={{ height: '384px' }}>
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-gray-700">
-                <div className="text-gray-600 dark:text-gray-400">Loading image...</div>
-              </div>
-            )}
-            {error && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-gray-700">
-                <div className="text-red-600 dark:text-red-400">{error}</div>
-              </div>
-            )}
-            {imageUrl && (
-              <img
-                key={imageUrl}
-                src={imageUrl}
-                alt="HSI False Color"
-                className="block"
-                style={{ 
-                  display: isLoading ? 'none' : 'block',
-                  minHeight: '80px',
-                  height: '384px',
-                  width: 'auto',
-                  maxWidth: 'none'
-                }}
-                onLoad={handleImageLoad}
-                onError={handleImageError}
-              />
-            )}
-            {!isLoading && !error && width && height && (
-              <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-sm">
-                {width} x {height} | {bands} bands
-              </div>
-            )}
+      <Card>
+        <CardContent className="p-4">
+          {/* Image container */}
+          <div className="flex justify-center">
+            <div className="w-full overflow-auto border border-border rounded relative" style={{ height: '384px' }}>
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {error && (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                  <div className="text-destructive">{error}</div>
+                </div>
+              )}
+              {imageUrl && (
+                <img
+                  key={imageUrl}
+                  src={imageUrl}
+                  alt="HSI假彩色图像"
+                  className="block"
+                  style={{ 
+                    display: isLoading ? 'none' : 'block',
+                    minHeight: '80px',
+                    height: '384px',
+                    width: 'auto',
+                    maxWidth: 'none'
+                  }}
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
+                />
+              )}
+              {!isLoading && !error && width && height && (
+                <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-sm">
+                  {width} x {height} | {bands} 波段
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {bandCount > 0 && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">RGB Band Selection</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-red-600 dark:text-red-400 mb-1">Red Channel</label>
-              <select
-                value={rgbConfig.redBand}
-                onChange={(e) => handleBandChange('redBand', parseInt(e.target.value))}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:border-red-500 focus:outline-none"
-              >
-                {bandOptions}
-              </select>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">RGB波段选择</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Three sliders in a row */}
+            <div className="grid grid-cols-3 gap-6">
+              {/* Red Channel Slider */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium">红通道</label>
+                  <span className="text-sm text-muted-foreground">
+                    {pendingConfig.redBand + 1}
+                  </span>
+                </div>
+                <Slider
+                  value={[pendingConfig.redBand]}
+                  onValueChange={(value) => handleBandChange('redBand', value)}
+                  min={0}
+                  max={bandCount - 1}
+                  step={1}
+                />
+              </div>
+
+              {/* Green Channel Slider */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium">绿通道</label>
+                  <span className="text-sm text-muted-foreground">
+                    {pendingConfig.greenBand + 1}
+                  </span>
+                </div>
+                <Slider
+                  value={[pendingConfig.greenBand]}
+                  onValueChange={(value) => handleBandChange('greenBand', value)}
+                  min={0}
+                  max={bandCount - 1}
+                  step={1}
+                />
+              </div>
+
+              {/* Blue Channel Slider */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium">蓝通道</label>
+                  <span className="text-sm text-muted-foreground">
+                    {pendingConfig.blueBand + 1}
+                  </span>
+                </div>
+                <Slider
+                  value={[pendingConfig.blueBand]}
+                  onValueChange={(value) => handleBandChange('blueBand', value)}
+                  min={0}
+                  max={bandCount - 1}
+                  step={1}
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-green-600 dark:text-green-400 mb-1">Green Channel</label>
-              <select
-                value={rgbConfig.greenBand}
-                onChange={(e) => handleBandChange('greenBand', parseInt(e.target.value))}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:border-green-500 focus:outline-none"
+            {/* Action buttons and info */}
+            <div className="flex justify-between items-center pt-2 border-t">
+              <span className="text-sm text-muted-foreground">
+                合成：波段 {pendingConfig.redBand + 1} (R) / 波段 {pendingConfig.greenBand + 1} (G) / 波段 {pendingConfig.blueBand + 1} (B)
+              </span>
+              <Button
+                onClick={handleApplyConfig}
+                disabled={!hasChanges}
+                size="sm"
               >
-                {bandOptions}
-              </select>
+                应用
+              </Button>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">Blue Channel</label>
-              <select
-                value={rgbConfig.blueBand}
-                onChange={(e) => handleBandChange('blueBand', parseInt(e.target.value))}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:border-blue-500 focus:outline-none"
-              >
-                {bandOptions}
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
-            Composite: Band {rgbConfig.redBand + 1} (R) / Band {rgbConfig.greenBand + 1} (G) / Band {rgbConfig.blueBand + 1} (B)
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

@@ -1,10 +1,25 @@
 import React, { useState, useRef } from 'react';
+import { type Dataset } from '@/services/datasetService';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Upload, Plus, FileUp } from 'lucide-react';
 
 interface HsiFileUploadProps {
-  onFileUploaded: (file: File) => Promise<void>;
+  onFileUploaded: (file: File, datasetId: number) => Promise<void>;
+  datasets: Dataset[];
+  selectedDatasetId: number | null;
+  onDatasetChange: (datasetId: number) => void;
+  onCreateDataset: () => void;
 }
 
-const HsiFileUpload: React.FC<HsiFileUploadProps> = ({ onFileUploaded }) => {
+const HsiFileUpload: React.FC<HsiFileUploadProps> = ({ 
+  onFileUploaded, 
+  datasets, 
+  selectedDatasetId, 
+  onDatasetChange,
+  onCreateDataset 
+}) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string>('');
@@ -20,7 +35,12 @@ const HsiFileUpload: React.FC<HsiFileUploadProps> = ({ onFileUploaded }) => {
 
   const handleUploadFile = async () => {
     if (!selectedFile) {
-      setError('Please select a MAT file first');
+      setError('请先选择MAT文件');
+      return;
+    }
+    
+    if (!selectedDatasetId) {
+      setError('请先选择或创建数据集');
       return;
     }
     
@@ -28,14 +48,13 @@ const HsiFileUpload: React.FC<HsiFileUploadProps> = ({ onFileUploaded }) => {
     setError('');
     
     try {
-      await onFileUploaded(selectedFile);
+      await onFileUploaded(selectedFile, selectedDatasetId);
       setSelectedFile(null);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      setError(err instanceof Error ? err.message : '上传失败');
     } finally {
       setIsUploading(false);
     }
@@ -48,7 +67,7 @@ const HsiFileUpload: React.FC<HsiFileUploadProps> = ({ onFileUploaded }) => {
       setSelectedFile(file);
       setError('');
     } else {
-      setError('Please drop a valid .mat file');
+      setError('请拖放有效的.mat文件');
     }
   };
 
@@ -57,72 +76,104 @@ const HsiFileUpload: React.FC<HsiFileUploadProps> = ({ onFileUploaded }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Upload MAT File</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Upload a MATLAB (.mat) file containing hyperspectral image data. 
-        The server will process it and convert to binary format.
-      </p>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">上传MAT文件</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          上传包含高光谱图像数据的MATLAB (.mat)文件。
+          服务器将处理并转换为二进制格式。
+        </p>
 
-      <div
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onClick={() => !isUploading && fileInputRef.current?.click()}
-        className={`
-          border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
-          transition-colors duration-200
-          ${isUploading 
-            ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 cursor-not-allowed'
-            : selectedFile 
-              ? 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-900/20' 
-              : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-700'
-          }
-        `}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".mat"
-          onChange={handleFileSelect}
-          className="hidden"
-          disabled={isUploading}
-        />
-        
-        {selectedFile ? (
-          <div className="text-green-700 dark:text-green-400">
-            <p className="font-medium">{selectedFile.name}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-            </p>
+        {/* Dataset Selection */}
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            选择数据集
+          </label>
+          <div className="flex gap-2">
+            <select
+              value={selectedDatasetId || ''}
+              onChange={(e) => onDatasetChange(Number(e.target.value))}
+              disabled={isUploading}
+              className="flex-1 border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">-- 选择数据集 --</option>
+              {datasets.map((dataset) => (
+                <option key={dataset.id} value={dataset.id}>
+                  {dataset.name}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCreateDataset}
+              disabled={isUploading}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              新建
+            </Button>
           </div>
-        ) : (
-          <div className="text-gray-500 dark:text-gray-400">
-            <p>Drop MAT file here or click to browse</p>
-            <p className="text-sm mt-1">Supports MATLAB .mat format</p>
-          </div>
-        )}
-      </div>
-
-      {error && (
-        <div className="mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-2 rounded">
-          {error}
         </div>
-      )}
 
-      <button
-        onClick={handleUploadFile}
-        disabled={!selectedFile || isUploading}
-        className={`
-          mt-4 w-full px-6 py-3 rounded-lg font-medium transition-colors
-          ${selectedFile && !isUploading
-            ? 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white' 
-            : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-          }
-        `}
-      >
-        {isUploading ? 'Uploading...' : 'Upload MAT File'}
-      </button>
-    </div>
+        {/* File Drop Zone */}
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onClick={() => !isUploading && fileInputRef.current?.click()}
+          className={`
+            border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
+            transition-colors duration-200
+            ${isUploading 
+              ? 'border-border bg-muted cursor-not-allowed'
+              : selectedFile 
+                ? 'border-green-500 bg-green-50 dark:bg-green-950/20' 
+                : 'border-input hover:border-primary hover:bg-accent'
+            }
+          `}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".mat"
+            onChange={handleFileSelect}
+            className="hidden"
+            disabled={isUploading}
+          />
+          
+          {selectedFile ? (
+            <div className="text-green-600 dark:text-green-400">
+              <FileUp className="h-8 w-8 mx-auto mb-2" />
+              <p className="font-medium">{selectedFile.name}</p>
+              <p className="text-sm text-muted-foreground">
+                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            </div>
+          ) : (
+            <div className="text-muted-foreground">
+              <Upload className="h-8 w-8 mx-auto mb-2" />
+              <p>拖放MAT文件到此处或点击浏览</p>
+              <p className="text-sm mt-1">支持MATLAB .mat格式</p>
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <Button
+          onClick={handleUploadFile}
+          disabled={!selectedFile || !selectedDatasetId || isUploading}
+          className="w-full"
+        >
+          {isUploading ? '上传中...' : '上传MAT文件'}
+        </Button>
+      </CardContent>
+    </Card>
   );
 };
 
