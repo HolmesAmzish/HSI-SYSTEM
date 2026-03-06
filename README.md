@@ -1,4 +1,4 @@
-# HSI-SYSTEM
+# 高光谱图像分析系统（HSI-SYSTEM）
 
 *Hypersepctral Image System for Geography*
 

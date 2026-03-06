@@ -23,13 +23,13 @@ public class HyperspectralImage {
     private Long id;
 
     @Column(nullable = false)
-    private String filename = "";
+    private String filename;
 
     @Enumerated(EnumType.STRING)
     private ProcessStatus status = ProcessStatus.PENDING;
 
     @Column(nullable = false, comment = "MAT file")
-    private String matPath = "";
+    private String matPath;
 
     @Column(comment = "BIN file")
     private String binPath;
@@ -45,6 +45,7 @@ public class HyperspectralImage {
 //    @JsonIncludeProperties("dataset_id")
     private Dataset dataset;
 
+    // Define by user
     @Column(name = "spatial_resolution", comment = "Length(m) of every pixel")
     private double spatialResolution;
 

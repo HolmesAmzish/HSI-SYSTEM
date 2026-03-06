@@ -47,10 +47,8 @@ public class HsiLoadResultHandler implements ResultHandler<HsiLoadResult> {
                 result.getFileSize()
         );
 
-        Long datasetId = result.getDatasetId();
-
         datasetService.processMqLoadResult(
-                datasetId,
+                result.getDatasetId(),
                 result.getHeight(),
                 result.getWidth(),
                 result.getBands()

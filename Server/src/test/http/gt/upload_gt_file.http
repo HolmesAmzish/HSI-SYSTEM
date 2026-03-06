@@ -1,0 +1,10 @@
+### Upload HSI MAT File(V5)
+POST http://localhost:8080/api/gt/upload/3
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="Dioni_gt_out68.mat"
+Content-Type: application/octet-stream
+
+< C:\Development\dataset\HyperspectralImage\dataset1\HyRANK\Dioni_gt_out68.mat
+--WebAppBoundary--

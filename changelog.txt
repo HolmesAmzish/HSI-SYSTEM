@@ -1,5 +1,12 @@
+0.3.2
+1. Update dataset definition for default bands when render the coloured image
+2. Update Home page
+3. Change display language to Chinese
+4. 添加 .gitattributes 忽略 AI 生成的 TSX 代码用于记录
+5. 将 HyperspectralImageService 中渲染图片逻辑分离到 utils 包中
+
 0.3.1
-1. feat(log): add async audit logging
+1. Add async audit logging
 
 0.3.0
 1. Give database entity id to the mq when calling back

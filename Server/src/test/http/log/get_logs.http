@@ -1,0 +1,2 @@
+### GET logs
+GET http://localhost:8080/api/log/latest

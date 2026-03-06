@@ -3,6 +3,7 @@ package cn.arorms.hsi.server.mq.models.payload;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 /**
  * Task payload for HSI_LOAD task type.
@@ -12,7 +13,7 @@ import lombok.EqualsAndHashCode;
  */
 
 @EqualsAndHashCode(callSuper = true)
-@Data @AllArgsConstructor
+@Data @AllArgsConstructor @NoArgsConstructor
 public class HsiLoadTask extends TaskPayload {
     private Long hsiId;
     private Long datasetId;

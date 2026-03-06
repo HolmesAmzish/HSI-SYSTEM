@@ -3,6 +3,8 @@ package cn.arorms.hsi.server.mq.consumers.handlers;
 import cn.arorms.hsi.server.mq.models.payload.GtLoadResult;
 import cn.arorms.hsi.server.mq.models.ResultEnvelope;
 import cn.arorms.hsi.server.enums.TaskType;
+import cn.arorms.hsi.server.services.AuditLogService;
+import cn.arorms.hsi.server.services.GroundTruthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -12,13 +14,20 @@ import org.springframework.stereotype.Component;
  * Processes ground truth mask load results.
  * 
  * @author Cacciatore
- * @version 1.0 2026-02-28
+ * @version 1.2 2026-03-06
  */
 @Component
 public class GtLoadResultHandler implements ResultHandler<GtLoadResult> {
     
     private static final Logger log = LoggerFactory.getLogger(GtLoadResultHandler.class);
-    
+    private final AuditLogService auditLogService;
+    private final GroundTruthService groundTruthService;
+
+    public GtLoadResultHandler(AuditLogService auditLogService, GroundTruthService groundTruthService) {
+        this.auditLogService = auditLogService;
+        this.groundTruthService = groundTruthService;
+    }
+
     @Override
     public TaskType getSupportedTaskType() {
         return TaskType.GT_LOAD;
@@ -27,14 +36,19 @@ public class GtLoadResultHandler implements ResultHandler<GtLoadResult> {
     @Override
     public void handle(ResultEnvelope<GtLoadResult> envelope) {
         String taskId = envelope.getTaskId();
-        log.info("Processing GT_LOAD result for task: {}", taskId);
+
+        auditLogService.info(getClass(), "Processing GT_LOAD result for task: {}", taskId);
         
-        // TODO: Implement ground truth load result processing logic
-        // This may include:
-        // - Updating ground truth mask entities in database
-        // - Processing class labels
-        // - Creating segmentation labels based on class information
-        
-        log.debug("GT_LOAD result received: {}", taskId);
+        var result = envelope.getData();
+        groundTruthService.processMqLoadResult(
+                result.getGtId(),
+                result.getBinaryPath(),
+                result.getHeight(),
+                result.getWidth(),
+                result.getNumClasses(),
+                result.getFileSize()
+        );
+
+        log.info("GT_LOAD result processed successfully for task: {}", taskId);
     }
 }

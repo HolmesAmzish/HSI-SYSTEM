@@ -16,11 +16,17 @@ public class Dataset {
     private Long id;
     private String name;
     private String description;
+
+    // Get from the result of Python inference
     private Integer height;
     private Integer width;
     private Integer bands;
+
+    // Define by user
     private Integer minBand;
     private Integer maxBand;
+
+    // Default band index for false coloured img of hsi
     private Integer defaultRed;
     private Integer defaultGreen;
     private Integer defaultBlue;

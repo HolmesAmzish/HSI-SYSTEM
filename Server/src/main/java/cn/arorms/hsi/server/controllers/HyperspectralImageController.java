@@ -35,6 +35,17 @@ public class HyperspectralImageController {
         return hsiService.getHsiList(pageable);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<HyperspectralImage> updateHsi(@PathVariable Long id, @RequestBody HyperspectralImage hsi) {
+        return ResponseEntity.ok(hsiService.updateHsi(id, hsi));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteHsi(@PathVariable Long id) {
+        hsiService.deleteHsi(id);
+        return ResponseEntity.ok("Successfully deleted hsi: " + id);
+    }
+
     @PostMapping("/upload/{dataset_id}")
     public ResponseEntity<String> handleHsiMatUpload(
             @PathVariable("dataset_id") Long datasetId,
@@ -46,20 +57,18 @@ public class HyperspectralImageController {
 
     /**
      * Get a false-color RGB image from the hyperspectral image.
-     * If no bands are specified, uses bands at 25%, 50%, 75% of total bands.
-     *
      * @param id         HSI ID
      * @param redBand    Red band index (optional, default 25% of bands)
      * @param greenBand  Green band index (optional, default 50% of bands)
      * @param blueBand   Blue band index (optional, default 75% of bands)
      * @return PNG image bytes
      */
-    @GetMapping("/get/{id}")
+    @GetMapping("/get-image/{id}")
     public ResponseEntity<byte[]> getHsiRgbImage(
             @PathVariable Long id,
-            @RequestParam(value = "red", required = false) Integer redBand,
-            @RequestParam(value = "green", required = false) Integer greenBand,
-            @RequestParam(value = "blue", required = false) Integer blueBand) {
+            @RequestParam(value = "red") Integer redBand,
+            @RequestParam(value = "green") Integer greenBand,
+            @RequestParam(value = "blue") Integer blueBand) {
 
         BufferedImage image = hsiService.getRgbImage(id, redBand, greenBand, blueBand);
 
