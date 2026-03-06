@@ -22,9 +22,10 @@ from typing import Optional
 
 from config.settings import settings
 from core.dependencies import get_redis_client
-from models.task import TaskEnvelope, TaskType, HsiLoadPayload
-from models.result import HsiLoadResult
+from models.task import TaskEnvelope, TaskType, HsiLoadPayload, GtLoadPayload
+from models.result import HsiLoadResult, GtLoadResult
 from handlers.hsi_load_handler import HsiLoadHandler
+from handlers.gt_load_handler import GtLoadHandler
 from service.result_service import ResultService
 
 
@@ -50,6 +51,7 @@ class TaskWorker:
         self.redis_client: Redis = get_redis_client()
         self.result_service = ResultService(self.redis_client)
         self.hsi_load_handler = HsiLoadHandler()
+        self.gt_load_handler = GtLoadHandler()
         
         # Task queue names
         self.task_queues = [
@@ -136,7 +138,7 @@ class TaskWorker:
             elif task_type == TaskType.HSI_INFERENCE:
                 logger.warning(f"HSI_INFERENCE task {task_id} received but not yet implemented")
             elif task_type == TaskType.GT_LOAD:
-                logger.warning(f"GT_LOAD task {task_id} received but not yet implemented")
+                self._handle_gt_load(task_id, task_envelope.data)
             else:
                 logger.error(f"Unknown task type: {task_type}")
 
@@ -212,6 +214,54 @@ class TaskWorker:
             self.result_service.publish_failure(
                 task_id=task_id,
                 task_type=TaskType.HSI_LOAD.value,
+                error_code="INTERNAL_ERROR",
+                error_message=f"Unexpected error: {str(e)}",
+                stack_trace=str(e),
+            )
+
+    def _handle_gt_load(self, task_id: str, payload: GtLoadPayload) -> None:
+        """
+        Handle GT_LOAD task type.
+        
+        Args:
+            task_id: Unique task identifier
+            payload: GT load task payload
+        """
+        try:
+            # Process the GT MAT file
+            result = self.gt_load_handler.handle(
+                task_id=task_id,
+                payload=payload,
+            )
+            
+            # Publish success result
+            self.result_service.publish_success(
+                task_id=task_id,
+                task_type=TaskType.GT_LOAD.value,
+                result_data=result,
+            )
+            
+        except ValueError as e:
+            logger.error(f"Invalid GT MAT file for task {task_id}: {e}")
+            self.result_service.publish_failure(
+                task_id=task_id,
+                task_type=TaskType.GT_LOAD.value,
+                error_code="INVALID_MAT_FILE",
+                error_message=str(e),
+            )
+        except IOError as e:
+            logger.error(f"Database error for task {task_id}: {e}")
+            self.result_service.publish_failure(
+                task_id=task_id,
+                task_type=TaskType.GT_LOAD.value,
+                error_code="DATABASE_ERROR",
+                error_message=str(e),
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error for task {task_id}: {e}", exc_info=True)
+            self.result_service.publish_failure(
+                task_id=task_id,
+                task_type=TaskType.GT_LOAD.value,
                 error_code="INTERNAL_ERROR",
                 error_message=f"Unexpected error: {str(e)}",
                 stack_trace=str(e),

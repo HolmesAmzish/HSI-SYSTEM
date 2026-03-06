@@ -68,14 +68,16 @@ class HsiInferencePayload(TaskPayload):
 class GtLoadPayload(TaskPayload):
     """
     Payload for GT_LOAD task type.
-    Contains the file path and dataset information.
+    Contains the file path, GT ID, and HSI ID.
     
     Attributes:
+        gtId: Unique identifier for the ground truth
+        hsiId: Unique identifier for the associated hyperspectral image
         filePath: Path to the GT MAT file
-        dataset: Dataset entity for ground truth
     """
+    gtId: int = Field(..., description="Unique identifier for the ground truth")
+    hsiId: int = Field(..., description="Unique identifier for the associated HSI")
     filePath: str = Field(..., description="Path to the GT MAT file")
-    dataset: Dataset = Field(..., description="Dataset entity for ground truth")
 
 
 # Union type for all task payloads

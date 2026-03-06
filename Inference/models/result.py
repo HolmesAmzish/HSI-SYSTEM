@@ -77,17 +77,21 @@ class GtLoadResult(TaskResult):
     Contains ground truth mask information.
     
     Attributes:
+        gtId: Unique identifier for the ground truth (echoed from request)
+        hsiId: Unique identifier for the associated HSI (echoed from request)
         height: Height of the ground truth mask
         width: Width of the ground truth mask
+        binaryPath: Path to the generated binary file
         numClasses: Number of distinct classes in ground truth
-        maskPath: Path to the generated binary mask file
-        classLabels: Map of class IDs to label names (optional)
+        fileSize: Size of the binary file in bytes
     """
+    gtId: int = Field(..., description="Unique identifier for the ground truth")
+    hsiId: int = Field(..., description="Unique identifier for the associated HSI")
     height: int = Field(..., description="Height of the ground truth mask")
     width: int = Field(..., description="Width of the ground truth mask")
+    binaryPath: str = Field(..., description="Path to the generated binary file")
     numClasses: int = Field(..., description="Number of distinct classes")
-    maskPath: str = Field(..., description="Path to the generated binary mask file")
-    classLabels: Optional[Dict[int, str]] = Field(default=None, description="Class ID to label mapping")
+    fileSize: int = Field(..., description="Size of the binary file in bytes")
 
 
 class ErrorResult(TaskResult):

@@ -1,6 +1,6 @@
 """
 Handler for GT_LOAD task type.
-Processes GT MAT files and stores raster data in PostgreSQL with PostGIS support.
+Processes GT MAT files and converts them to binary format for Spring/React consumption.
 """
 
 import logging
@@ -8,9 +8,7 @@ import scipy.io as io
 import numpy as np
 import h5py
 from pathlib import Path
-from typing import Any, Optional
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from typing import Optional
 
 from config.settings import settings
 from models.result import GtLoadResult
@@ -22,26 +20,15 @@ logger = logging.getLogger(__name__)
 
 class GtLoadHandler:
     """
-    Handler for loading GT MAT files and storing raster data in PostgreSQL.
+    Handler for loading GT MAT files and converting to binary format.
     
-    This handler processes ground truth MAT files, extracts the mask data,
-    and stores it in the ground_truth_masks table with PostGIS raster support.
+    This handler processes ground truth MAT files, converts them to
+    raw binary format (float32), and returns metadata for database storage.
     
-    The raster data is stored as byte array in the database for efficient
-    access and spatial operations via PostGIS.
+    The binary format is optimized for:
+    - Spring Boot backend access via memory-mapped files
+    - Frontend React visualization via direct binary streaming
     """
-
-    def __init__(self):
-        """Initialize database connection."""
-        self.engine = create_engine(
-            settings.postgres.connection_url,
-            pool_size=settings.postgres.POSTGRES_POOL_SIZE,
-            max_overflow=settings.postgres.POSTGRES_MAX_OVERFLOW,
-            pool_timeout=settings.postgres.POSTGRES_POOL_TIMEOUT,
-            pool_recycle=settings.postgres.POSTGRES_POOL_RECYCLE,
-            echo=False
-        )
-        self.SessionLocal = sessionmaker(bind=self.engine, autocommit=False, autoflush=False)
 
     def handle(self, task_id: str, payload: GtLoadPayload, output_dir: Optional[Path] = None) -> GtLoadResult:
         """
@@ -49,49 +36,56 @@ class GtLoadHandler:
         
         Args:
             task_id: Unique task identifier
-            payload: Task payload containing file path and dataset info
-            output_dir: Optional directory for output binary files (for backup)
+            payload: Task payload containing gtId, hsiId, and filePath
+            output_dir: Optional directory for output binary files (uses default if not provided)
             
         Returns:
-            GtLoadResult with metadata
+            GtLoadResult with gtId, hsiId, height, width, binaryPath, numClasses, fileSize
             
         Raises:
             ValueError: If MAT file is invalid or cannot be loaded
-            IOError: If database write fails
+            IOError: If binary file cannot be written
         """
+        # Use default GT bin directory if not provided
+        if output_dir is None:
+            output_dir = settings.BIN_DIR / "gt"
+        
         # Resolve file path: convert relative path to absolute path
         mat_path = self._resolve_file_path(payload.filePath)
         logger.info(f"Processing GT MAT file: {mat_path}")
 
         # Load MAT file and get mask data
-        mask_data, unique_classes = self._load_mat_file(mat_path)
+        mask_data = self._load_mat_file(mat_path)
 
-        # Get dimensions
-        height, width = self._validate_mask_shape(mask_data)
+        # Get dimensions and num_classes
+        height, width, num_classes = self._validate_and_analyze_mask(mask_data)
 
-        # Convert mask to byte array for storage
-        raster_bytes = self._convert_to_raster_bytes(mask_data)
+        # Generate binary file path
+        bin_path = self._generate_bin_path(mat_path, output_dir)
 
-        # Store in PostgreSQL with PostGIS raster
-        self._store_in_database(
-            hsi_id=payload.dataset.id or 0,
-            filename=Path(payload.filePath).name,
-            mat_path=str(payload.filePath),
-            raster_bytes=raster_bytes
-        )
+        # Convert to float32 and save as binary
+        self._save_as_binary(mask_data, bin_path)
+
+        # Get file size
+        file_size = bin_path.stat().st_size
+
+        # Convert absolute path to relative path for Java to resolve
+        binary_relative_path = self._to_relative_path(bin_path)
 
         logger.info(
             f"GT mask loaded: {height}x{width}, "
-            f"classes: {unique_classes}, "
-            f"stored in database"
+            f"num_classes: {num_classes}, "
+            f"binary saved to {bin_path} ({file_size} bytes)"
         )
 
         return GtLoadResult(
+            gtId=payload.gtId,
+            hsiId=payload.hsiId,
             height=height,
             width=width,
-            numClasses=len(unique_classes),
-            maskPath=str(payload.filePath),
-            classLabels={int(k): str(v) for k, v in unique_classes.items()}
+            binaryPath=str(binary_relative_path),
+            numClasses=num_classes,
+            fileSize=file_size,
         )
 
     def _resolve_file_path(self, file_path: str) -> Path:
@@ -118,7 +112,32 @@ class GtLoadHandler:
         logger.debug(f"Resolved relative path '{file_path}' to '{resolved_path}'")
         return resolved_path
 
-    def _load_mat_file(self, file_path: Path) -> tuple[np.ndarray, dict]:
+    def _to_relative_path(self, file_path: Path) -> str:
+        """
+        Convert absolute path to relative path against SHARED_DATA_DIR.
+        
+        If the path is already relative, it is returned as-is.
+        Uses forward slashes for cross-platform compatibility.
+        
+        Args:
+            file_path: File path to convert
+            
+        Returns:
+            Relative path string with forward slashes
+        """
+        try:
+            # Try to compute relative path against SHARED_DATA_DIR
+            relative = file_path.relative_to(settings.SHARED_DATA_DIR)
+            # Convert to string with forward slashes for cross-platform compatibility
+            relative_str = relative.as_posix()
+            logger.debug(f"Converted absolute path '{file_path}' to relative '{relative_str}'")
+            return relative_str
+        except ValueError:
+            # Path is not under SHARED_DATA_DIR, return as-is
+            logger.warning(f"Path '{file_path}' is not under SHARED_DATA_DIR, returning as-is")
+            return file_path.as_posix()
+
+    def _load_mat_file(self, file_path: Path) -> np.ndarray:
         """
         Load MAT file and extract ground truth mask data.
         
@@ -128,7 +147,7 @@ class GtLoadHandler:
             file_path: Path to MAT file
             
         Returns:
-            Tuple of (numpy array containing mask data, dict of class labels)
+            Numpy array containing mask data
             
         Raises:
             ValueError: If file cannot be loaded or contains no valid data
@@ -147,11 +166,8 @@ class GtLoadHandler:
             mask_key = valid_keys[0]
             mask_data = np.asarray(data[mask_key])
 
-            # Extract class labels if available
-            class_labels = self._extract_class_labels(data)
-
             logger.debug(f"Loaded mask from key '{mask_key}' with shape {mask_data.shape}")
-            return mask_data, class_labels
+            return mask_data
 
         except NotImplementedError:
             # Handle v7.3 format (HDF5-based)
@@ -163,91 +179,26 @@ class GtLoadHandler:
 
                 mask_key = valid_keys[0]
                 mask_data = np.array(f[mask_key])
-
-                # Extract class labels if available
-                class_labels = self._extract_class_labels_from_hdf5(f)
+                
+                # HDF5 uses (channels, width, height) order, transpose if needed
+                if len(mask_data.shape) == 3:
+                    mask_data = mask_data.transpose(2, 1, 0)
 
                 logger.debug(f"Loaded HDF5 mask from key '{mask_key}' with shape {mask_data.shape}")
-                return mask_data, class_labels
+                return mask_data
 
         except Exception as e:
             raise ValueError(f"Failed to load MAT file: {str(e)}")
 
-    def _extract_class_labels(self, data: dict) -> dict:
+    def _validate_and_analyze_mask(self, mask: np.ndarray) -> tuple[int, int, int]:
         """
-        Extract class labels from MAT file data.
-        
-        Looks for common variable names like 'labels', 'class_names', 'classNames'.
-        
-        Args:
-            data: Dictionary loaded from MAT file
-            
-        Returns:
-            Dictionary mapping class IDs to label names
-        """
-        class_labels = {}
-        
-        # Common variable names for class labels
-        label_keys = ['labels', 'class_names', 'classNames', 'classLabels', 'names']
-        
-        for key in label_keys:
-            if key in data:
-                labels = data[key]
-                if isinstance(labels, np.ndarray):
-                    if labels.dtype.kind in ('U', 'S', 'O'):
-                        # String array
-                        for i, label in enumerate(labels.flatten()):
-                            if isinstance(label, bytes):
-                                class_labels[i + 1] = label.decode('utf-8')
-                            else:
-                                class_labels[i + 1] = str(label)
-                    elif labels.dtype.kind == 'i' or labels.dtype.kind == 'f':
-                        # Numeric array - use index as label
-                        for i, val in enumerate(labels.flatten()):
-                            class_labels[i + 1] = f"class_{int(val)}"
-                break
-        
-        return class_labels
-
-    def _extract_class_labels_from_hdf5(self, f: h5py.File) -> dict:
-        """
-        Extract class labels from HDF5 file.
-        
-        Args:
-            f: Open HDF5 file object
-            
-        Returns:
-            Dictionary mapping class IDs to label names
-        """
-        class_labels = {}
-        
-        # Common variable names for class labels
-        label_keys = ['labels', 'class_names', 'classNames', 'classLabels', 'names']
-        
-        for key in label_keys:
-            if key in f:
-                labels = f[key]
-                if isinstance(labels, h5py.Dataset):
-                    labels_data = labels[:]
-                    if labels_data.dtype.kind in ('U', 'S', 'O'):
-                        for i, label in enumerate(labels_data.flatten()):
-                            if isinstance(label, bytes):
-                                class_labels[i + 1] = label.decode('utf-8')
-                            else:
-                                class_labels[i + 1] = str(label)
-                break
-        
-        return class_labels
-
-    def _validate_mask_shape(self, mask: np.ndarray) -> tuple[int, int]:
-        """
-        Validate and normalize mask shape.
+        Validate mask shape and count number of unique classes.
         
         Args:
             mask: Numpy array containing ground truth mask
             
         Returns:
-            Tuple of (height, width)
+            Tuple of (height, width, num_classes)
             
         Raises:
             ValueError: If mask shape is unsupported
@@ -271,67 +222,49 @@ class GtLoadHandler:
         if height <= 0 or width <= 0:
             raise ValueError(f"Invalid dimensions: {height}x{width}")
 
-        return height, width
+        # Count unique classes (excluding 0 if it's background)
+        unique_classes = np.unique(mask)
+        num_classes = len(unique_classes)
 
-    def _convert_to_raster_bytes(self, mask: np.ndarray) -> bytes:
+        logger.debug(f"Mask dimensions: {height}x{width}, unique classes: {unique_classes}")
+
+        return height, width, num_classes
+
+    def _generate_bin_path(self, mat_path: Path, output_dir: Path) -> Path:
         """
-        Convert mask data to bytes for database storage.
+        Generate binary file path based on MAT file name.
         
-        The mask is converted to int16 for efficient storage while
-        supporting up to 32767 class labels.
+        Args:
+            mat_path: Path to source MAT file
+            output_dir: Directory for output files
+            
+        Returns:
+            Path to binary output file
+        """
+        mat_stem = mat_path.stem
+        output_dir.mkdir(parents=True, exist_ok=True)
+        return output_dir / f"{mat_stem}.bin"
+
+    def _save_as_binary(self, mask: np.ndarray, bin_path: Path) -> None:
+        """
+        Save mask data as raw binary file.
+        
+        Data is converted to float32 and saved in C-order (row-major)
+        for compatibility with Spring Boot and React.
         
         Args:
             mask: Numpy array containing ground truth mask
-            
-        Returns:
-            Bytes representation of the mask
-        """
-        # Convert to int16 for efficient storage
-        mask_int16 = mask.astype(np.int16, order='C')
-        return mask_int16.tobytes()
-
-    def _store_in_database(
-        self,
-        hsi_id: int,
-        filename: str,
-        mat_path: str,
-        raster_bytes: bytes
-    ) -> None:
-        """
-        Store ground truth mask in PostgreSQL database.
-        
-        Args:
-            hsi_id: ID of the associated hyperspectral image
-            filename: Name of the MAT file
-            mat_path: Path to the MAT file
-            raster_bytes: Raster data as bytes
+            bin_path: Path to output binary file
             
         Raises:
-            IOError: If database write fails
+            IOError: If file cannot be written
         """
+        # Ensure float32 for consistent precision
+        mask_float32 = mask.astype("float32", order="C")
+
         try:
-            with self.SessionLocal() as session:
-                # Insert into ground_truth_masks table
-                # The raster column uses PostGIS raster type, but we store as bytea
-                # which PostgreSQL will handle appropriately
-                query = text("""
-                    INSERT INTO ground_truth_masks (hsi_id, filename, mat_path, raster)
-                    VALUES (:hsi_id, :filename, :mat_path, :raster)
-                """)
-                
-                session.execute(
-                    query,
-                    {
-                        "hsi_id": hsi_id,
-                        "filename": filename,
-                        "mat_path": mat_path,
-                        "raster": raster_bytes
-                    }
-                )
-                
-                session.commit()
-                logger.info(f"Ground truth mask stored in database for hsi_id={hsi_id}")
-                
-        except Exception as e:
-            session.rollback()
-            raise IOError(f"Failed to store ground truth mask in database: {e}")
+            with open(bin_path, "wb") as f:
+                f.write(mask_float32.tobytes())
+            logger.debug(f"Binary file saved: {bin_path}")
+        except IOError as e:
+            raise IOError(f"Failed to write binary file {bin_path}: {e}")
