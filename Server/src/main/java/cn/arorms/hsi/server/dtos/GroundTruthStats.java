@@ -1,5 +1,6 @@
 package cn.arorms.hsi.server.dtos;
 
+import cn.arorms.hsi.server.entities.SegmentationLabel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,11 +19,7 @@ public class GroundTruthStats {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CategorySpectralStat {
-        // 类别 ID (即 GT 矩阵中的像素值，如 0, 1, 2...)
-        private Integer classId;
-
-        // 类别名称 (如 "Water", "Vegetation"，如果你的系统中有存储的话)
-        private String className;
+        private SegmentationLabel label;
 
         // 该类别在图像中的像素总数 (用于展示占比)
         private Long pixelCount;

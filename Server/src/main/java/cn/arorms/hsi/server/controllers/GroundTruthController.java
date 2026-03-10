@@ -1,12 +1,13 @@
 package cn.arorms.hsi.server.controllers;
 
+import cn.arorms.hsi.server.dtos.GroundTruthMatrix;
+import cn.arorms.hsi.server.dtos.GroundTruthStats;
 import cn.arorms.hsi.server.entities.GroundTruth;
 import cn.arorms.hsi.server.services.GroundTruthService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,11 +47,15 @@ public class GroundTruthController {
         return ResponseEntity.ok("Ground truth mat file upload success");
     }
 
-    @GetMapping(value = "/mask/{id}", produces = MediaType.IMAGE_PNG_VALUE)
-    public ResponseEntity<byte[]> getGtMask(@PathVariable Long id) {
-        byte[] imageBytes = groundTruthService.getGtMaskImage(id);
-        return ResponseEntity.ok()
-                .contentType(MediaType.IMAGE_PNG)
-                .body(imageBytes);
+    @GetMapping("/mask/{id}")
+    public ResponseEntity<GroundTruthMatrix> getGtMask(@PathVariable Long id) {
+        GroundTruthMatrix matrix = groundTruthService.getGtMaskMatrix(id);
+        return ResponseEntity.ok(matrix);
+    }
+
+    @GetMapping("/stats/{id}")
+    public ResponseEntity<GroundTruthStats> getGtStats(@PathVariable Long id) {
+        GroundTruthStats stats = groundTruthService.getGtStats(id);
+        return ResponseEntity.ok(stats);
     }
 }

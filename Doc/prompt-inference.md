@@ -1,0 +1,1 @@
+C:\Development\workspace\ARSNet 阅读这个项目，这是根据高光谱图像推理的模型，现在我需要你将这个项目改造

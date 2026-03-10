@@ -2,6 +2,7 @@ package cn.arorms.hsi.server.mq.models.payload;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.util.Map;
@@ -13,13 +14,11 @@ import java.util.Map;
  * @author Cacciatore
  * @version 1.0 2026-02-27
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class HsiInferenceResult extends ResultPayload {
-    private Integer height;
-    private Integer width;
-    private String classificationMap;
-    private String confidenceMap;
-    private Map<String, Double> metrics;
+    private Long hsiId;
+    private String matPath;
 }

@@ -18,6 +18,13 @@ public class SegmentationLabel {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne
+    @JoinColumn(name = "dataset_id")
+    private Dataset dataset;
+
+    @Column(name = "label_indedx")
+    private Integer labelIndex;
+
     @Column(comment = "Chinese name for display")
     private String name = "";
 
