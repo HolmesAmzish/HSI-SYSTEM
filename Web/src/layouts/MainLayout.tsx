@@ -19,6 +19,8 @@ import {
   Moon,
   Monitor,
   FolderOpen,
+  Eye,
+  BarChart3,
 } from 'lucide-react';
 
 interface NavItem {
@@ -44,9 +46,19 @@ const navItems: NavItem[] = [
     icon: <Image className="w-5 h-5" />,
   },
   {
+    path: '/analysis',
+    label: '高光谱分析',
+    icon: <BarChart3 className="w-5 h-5" />,
+  },
+  {
     path: '/ground-truth',
     label: '地表真值',
     icon: <CheckCircle className="w-5 h-5" />,
+  },
+  {
+    path: '/gt-viewer',
+    label: '真值检视',
+    icon: <Eye className="w-5 h-5" />,
   },
   {
     path: '/inference',
