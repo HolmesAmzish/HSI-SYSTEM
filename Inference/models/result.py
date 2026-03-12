@@ -94,6 +94,22 @@ class GtLoadResult(TaskResult):
     fileSize: int = Field(..., description="Size of the binary file in bytes")
 
 
+class HsiPcaResult(TaskResult):
+    """
+    Result payload for HSI_PCA task type.
+    Contains the PCA result path after Python processing.
+    
+    Since PCA always returns a fixed 3-channel cube and dimensions
+    are available elsewhere, only the path is needed.
+    
+    Attributes:
+        hsiId: Unique identifier for the HSI dataset (echoed from request)
+        pcaPath: Path to the generated PCA binary file
+    """
+    hsiId: int = Field(..., description="Unique identifier for the HSI dataset")
+    pcaPath: str = Field(..., description="Path to the generated PCA binary file")
+
+
 class ErrorResult(TaskResult):
     """
     Result payload for failed tasks.
@@ -110,7 +126,7 @@ class ErrorResult(TaskResult):
 
 
 # Union type for all result payloads
-AnyTaskResult = Union[HsiLoadResult, HsiInferenceResult, GtLoadResult, ErrorResult]
+AnyTaskResult = Union[HsiLoadResult, HsiInferenceResult, GtLoadResult, HsiPcaResult, ErrorResult]
 
 
 class ResultEnvelope(BaseModel):

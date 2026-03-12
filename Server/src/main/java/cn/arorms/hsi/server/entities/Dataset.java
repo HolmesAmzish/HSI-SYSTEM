@@ -30,4 +30,6 @@ public class Dataset {
     private Integer defaultRed;
     private Integer defaultGreen;
     private Integer defaultBlue;
+
+    private String modelPath;
 }

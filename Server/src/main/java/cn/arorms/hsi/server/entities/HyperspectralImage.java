@@ -34,6 +34,9 @@ public class HyperspectralImage {
     @Column(comment = "BIN file")
     private String binPath;
 
+    @Column(name = "pca_path", comment = "BIN file of PCA result")
+    private String pcaPath;
+
     @Column(comment = "hash of file header 1MB")
     private String headerHash;
 

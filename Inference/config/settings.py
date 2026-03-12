@@ -42,7 +42,7 @@ class Settings(BaseSettings):
         return self.SHARED_DATA_DIR / "mat" / "gt"
 
     # Redis queue configuration
-    # Three task queues for different task types
+    # Task queues for different task types
     REDIS_QUEUE_HSI_LOAD: str = Field(
         default="hsi:queue:hsi-load",
         validation_alias="REDIS_QUEUE_HSI_LOAD",
@@ -57,6 +57,11 @@ class Settings(BaseSettings):
         default="hsi:queue:gt-load",
         validation_alias="REDIS_QUEUE_GT_LOAD",
         description="Queue for GT load tasks"
+    )
+    REDIS_QUEUE_HSI_PCA: str = Field(
+        default="hsi:queue:hsi-pca",
+        validation_alias="REDIS_QUEUE_HSI_PCA",
+        description="Queue for HSI PCA tasks"
     )
     # Single shared result queue for all task results
     REDIS_QUEUE_RESULT: str = Field(

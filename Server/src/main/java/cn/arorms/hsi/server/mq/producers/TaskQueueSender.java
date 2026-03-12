@@ -66,14 +66,27 @@ public class TaskQueueSender {
     }
 
     // TODO: Add database object ID for update when calling back
-    public String sendHsiInferenceTask(Long hsiId, String filePath, Dataset dataset) {
+    public String sendHsiInferenceTask(Long hsiId, String filePath, String modelPath) {
         log.debug("Sending HSI_INFERENCE task for file: {}", filePath);
-        return sendTask(TaskType.HSI_INFERENCE, new HsiInferenceTask(filePath, dataset));
+        return sendTask(TaskType.HSI_INFERENCE, new HsiInferenceTask(hsiId, filePath, modelPath));
     }
 
     public String sendGtLoadTask(Long gtId, Long hsiId, String filePath) {
         log.debug("Sending GT_LOAD task for file: {}", filePath);
         return sendTask(TaskType.GT_LOAD, new GtLoadTask(gtId, hsiId, filePath));
+    }
+
+    /**
+     * Send HSI PCA task to queue.
+     * PCA task will reduce HSI to 3 channels for 3D point cloud visualization.
+     *
+     * @param hsiId    Hyperspectral image ID
+     * @param filePath Path to the HSI binary file
+     * @return Task ID
+     */
+    public String sendHsiPcaTask(Long hsiId, String filePath) {
+        log.debug("Sending HSI_PCA task for hsiId: {}, file: {}", hsiId, filePath);
+        return sendTask(TaskType.HSI_PCA, new HsiPcaTask(hsiId, filePath));
     }
 
     // ==================== Queue Status Methods ====================

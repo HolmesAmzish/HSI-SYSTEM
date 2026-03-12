@@ -1,23 +1,15 @@
 package cn.arorms.hsi.server.mq.models.payload;
 
-import cn.arorms.hsi.server.entities.Dataset;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-/**
- * Task payload for HSI_INFERENCE task type.
- * 
- * @author Cacciatore
- * @version 1.0 2026-03-01
- */
 @EqualsAndHashCode(callSuper = true)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class HsiInferenceTask extends TaskPayload {
-    private Long hsiId;
+public class HsiPcaTask extends TaskPayload{
+    private Long hsiId; // used to find hsi after finishing
     private String filePath;
-    private String modelPath;
 }

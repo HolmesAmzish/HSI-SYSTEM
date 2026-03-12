@@ -4,6 +4,7 @@ import cn.arorms.hsi.server.mq.models.ResultEnvelope;
 import cn.arorms.hsi.server.mq.models.payload.GtLoadResult;
 import cn.arorms.hsi.server.mq.models.payload.HsiInferenceResult;
 import cn.arorms.hsi.server.mq.models.payload.HsiLoadResult;
+import cn.arorms.hsi.server.mq.models.payload.HsiPcaResult;
 import cn.arorms.hsi.server.mq.models.payload.ResultPayload;
 import cn.arorms.hsi.server.enums.TaskType;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -226,6 +227,8 @@ public class ResultListener {
                 return HsiInferenceResult.class;
             case GT_LOAD:
                 return GtLoadResult.class;
+            case HSI_PCA:
+                return HsiPcaResult.class;
             default:
                 return null;
         }

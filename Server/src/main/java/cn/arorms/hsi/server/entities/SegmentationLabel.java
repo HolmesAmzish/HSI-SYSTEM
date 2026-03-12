@@ -1,5 +1,6 @@
 package cn.arorms.hsi.server.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -19,6 +20,7 @@ public class SegmentationLabel {
     private Long id;
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "dataset_id")
     private Dataset dataset;
 

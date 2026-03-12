@@ -11,7 +11,8 @@ package cn.arorms.hsi.server.enums;
 public enum TaskType {
     HSI_LOAD("hsi:queue:hsi-load"),
     HSI_INFERENCE("hsi:queue:hsi-inference"),
-    GT_LOAD("hsi:queue:gt-load");
+    GT_LOAD("hsi:queue:gt-load"),
+    HSI_PCA("hsi:queue:hsi-pca");
 
     /**
      * Shared result queue key for all task types.

@@ -1,5 +1,6 @@
 package cn.arorms.hsi.server.controllers;
 
+import cn.arorms.hsi.server.dtos.PcaPointCloud;
 import cn.arorms.hsi.server.entities.HyperspectralImage;
 import cn.arorms.hsi.server.services.HyperspectralImageService;
 
@@ -16,6 +17,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/hsi")
@@ -80,5 +82,37 @@ public class HyperspectralImageController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /**
+     * Trigger PCA task for a hyperspectral image.
+     * Sends a PCA task to Redis MQ for Python worker to process.
+     *
+     * @param id HSI ID
+     * @return Task ID
+     */
+    @PostMapping("/pca/{id}")
+    public ResponseEntity<Map<String, String>> triggerPcaTask(@PathVariable Long id) {
+        String taskId = hsiService.triggerPcaTask(id);
+        return ResponseEntity.ok(Map.of(
+                "message", "PCA task triggered successfully",
+                "taskId", taskId
+        ));
+    }
+
+    /**
+     * Get PCA point cloud data for 3D visualization.
+     * Returns XYZ coordinates from PCA-reduced 3 channels with optional GT labels.
+     *
+     * @param id   HSI ID
+     * @param gtId Ground truth ID (optional)
+     * @return PcaPointCloud DTO
+     */
+    @GetMapping("/pca/{id}")
+    public ResponseEntity<PcaPointCloud> getPcaPointCloud(
+            @PathVariable Long id,
+            @RequestParam(value = "gtId", required = false) Long gtId) {
+        PcaPointCloud pointCloud = hsiService.getPcaPointCloud(id, gtId);
+        return ResponseEntity.ok(pointCloud);
     }
 }

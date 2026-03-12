@@ -8,3 +8,8 @@ redis 多队列处理，解耦IO密集与计算密集任务
 
 redis serial https://docs.spring.io/spring-data/redis/reference/redis/template.html
 redis mq receiver https://spring.io/guides/gs/messaging-redis
+
+范围波段均值
+
+分类面积占比
+

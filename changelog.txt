@@ -1,3 +1,12 @@
+0.5.0
+1. 添加 PCA 主成分分析以及降维像素点云可视化
+2. 添加 PCA 分析队列处理
+
+0.4.0
+1. 完善地表真值的上传和处理
+2. 更改地表真值返回为一个矩阵格式，并附带 labelMap
+3. 添加返回图像分类中光谱特征数据
+
 0.3.2
 1. Update dataset definition for default bands when render the coloured image
 2. Update Home page

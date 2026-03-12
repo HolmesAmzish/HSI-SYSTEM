@@ -10,7 +10,8 @@ public enum FileType {
     HSI_MAT("mat/hsi"),
     HSI_BIN("bin/hsi"),
     GT_MAT("mat/gt"),
-    GT_BIN("bin/gt");
+    GT_BIN("bin/gt"),
+    PCA_BIN("bin/pca");
 
     private final String path;
 

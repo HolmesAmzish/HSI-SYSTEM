@@ -22,10 +22,11 @@ from typing import Optional
 
 from config.settings import settings
 from core.dependencies import get_redis_client
-from models.task import TaskEnvelope, TaskType, HsiLoadPayload, GtLoadPayload
-from models.result import HsiLoadResult, GtLoadResult
+from models.task import TaskEnvelope, TaskType, HsiLoadPayload, GtLoadPayload, HsiPcaPayload
+from models.result import HsiLoadResult, GtLoadResult, HsiPcaResult
 from handlers.hsi_load_handler import HsiLoadHandler
 from handlers.gt_load_handler import GtLoadHandler
+from handlers.hsi_pca_handler import HsiPcaHandler
 from service.result_service import ResultService
 
 
@@ -52,12 +53,14 @@ class TaskWorker:
         self.result_service = ResultService(self.redis_client)
         self.hsi_load_handler = HsiLoadHandler()
         self.gt_load_handler = GtLoadHandler()
+        self.hsi_pca_handler = HsiPcaHandler()
         
         # Task queue names
         self.task_queues = [
             settings.REDIS_QUEUE_HSI_LOAD,
             settings.REDIS_QUEUE_HSI_INFERENCE,
             settings.REDIS_QUEUE_GT_LOAD,
+            settings.REDIS_QUEUE_HSI_PCA,
         ]
         
         # Output directory for binary files
@@ -139,6 +142,8 @@ class TaskWorker:
                 logger.warning(f"HSI_INFERENCE task {task_id} received but not yet implemented")
             elif task_type == TaskType.GT_LOAD:
                 self._handle_gt_load(task_id, task_envelope.data)
+            elif task_type == TaskType.HSI_PCA:
+                self._handle_hsi_pca(task_id, task_envelope.data)
             else:
                 logger.error(f"Unknown task type: {task_type}")
 
@@ -262,6 +267,55 @@ class TaskWorker:
             self.result_service.publish_failure(
                 task_id=task_id,
                 task_type=TaskType.GT_LOAD.value,
+                error_code="INTERNAL_ERROR",
+                error_message=f"Unexpected error: {str(e)}",
+                stack_trace=str(e),
+            )
+
+    def _handle_hsi_pca(self, task_id: str, payload: HsiPcaPayload) -> None:
+        """
+        Handle HSI_PCA task type.
+        
+        Args:
+            task_id: Unique task identifier
+            payload: HSI PCA task payload
+        """
+        try:
+            # Process the HSI MAT file with PCA
+            result = self.hsi_pca_handler.handle(
+                task_id=task_id,
+                payload=payload,
+                output_dir=self.output_dir,
+            )
+            
+            # Publish success result
+            self.result_service.publish_success(
+                task_id=task_id,
+                task_type=TaskType.HSI_PCA.value,
+                result_data=result,
+            )
+            
+        except ValueError as e:
+            logger.error(f"Invalid HSI MAT file for PCA task {task_id}: {e}")
+            self.result_service.publish_failure(
+                task_id=task_id,
+                task_type=TaskType.HSI_PCA.value,
+                error_code="INVALID_MAT_FILE",
+                error_message=str(e),
+            )
+        except IOError as e:
+            logger.error(f"IO error for PCA task {task_id}: {e}")
+            self.result_service.publish_failure(
+                task_id=task_id,
+                task_type=TaskType.HSI_PCA.value,
+                error_code="IO_ERROR",
+                error_message=str(e),
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error for PCA task {task_id}: {e}", exc_info=True)
+            self.result_service.publish_failure(
+                task_id=task_id,
+                task_type=TaskType.HSI_PCA.value,
                 error_code="INTERNAL_ERROR",
                 error_message=f"Unexpected error: {str(e)}",
                 stack_trace=str(e),

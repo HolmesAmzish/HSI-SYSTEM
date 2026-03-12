@@ -17,6 +17,7 @@ class TaskType(str, Enum):
     HSI_LOAD = "HSI_LOAD"
     HSI_INFERENCE = "HSI_INFERENCE"
     GT_LOAD = "GT_LOAD"
+    HSI_PCA = "HSI_PCA"
 
 
 class TaskPayload(BaseModel):
@@ -55,14 +56,16 @@ class Dataset(BaseModel):
 class HsiInferencePayload(TaskPayload):
     """
     Payload for HSI_INFERENCE task type.
-    Contains the file path and dataset information.
+    Contains the file path, HSI ID, and model path for inference.
     
     Attributes:
+        hsiId: Unique identifier for the HSI dataset
         filePath: Path to the HSI MAT file
-        dataset: Dataset entity for inference
+        modelPath: Path to the trained model file (.pt)
     """
+    hsiId: int = Field(..., description="Unique identifier for the HSI dataset")
     filePath: str = Field(..., description="Path to the HSI MAT file")
-    dataset: Dataset = Field(..., description="Dataset entity for inference")
+    modelPath: str = Field(..., description="Path to the trained model file")
 
 
 class GtLoadPayload(TaskPayload):
@@ -80,8 +83,21 @@ class GtLoadPayload(TaskPayload):
     filePath: str = Field(..., description="Path to the GT MAT file")
 
 
+class HsiPcaPayload(TaskPayload):
+    """
+    Payload for HSI_PCA task type.
+    Contains the file path to the HSI MAT file and HSI ID.
+    
+    Attributes:
+        hsiId: Unique identifier for the HSI dataset (used to find HSI after finishing)
+        filePath: Path to the HSI MAT file
+    """
+    hsiId: int = Field(..., description="Unique identifier for the HSI dataset")
+    filePath: str = Field(..., description="Path to the HSI MAT file")
+
+
 # Union type for all task payloads
-AnyTaskPayload = Union[HsiLoadPayload, HsiInferencePayload, GtLoadPayload]
+AnyTaskPayload = Union[HsiLoadPayload, HsiInferencePayload, GtLoadPayload, HsiPcaPayload]
 
 
 class TaskEnvelope(BaseModel):

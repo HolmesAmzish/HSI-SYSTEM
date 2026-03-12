@@ -20,5 +20,5 @@ import java.util.Map;
 @NoArgsConstructor
 public class HsiInferenceResult extends ResultPayload {
     private Long hsiId;
-    private String matPath;
+    private String resultMatPath;
 }
