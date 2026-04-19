@@ -1,8 +1,17 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Sheet,
   SheetContent,
@@ -21,6 +30,10 @@ import {
   FolderOpen,
   Eye,
   BarChart3,
+  User,
+  LogOut,
+  Settings,
+  LogIn,
 } from 'lucide-react';
 
 interface NavItem {
@@ -62,7 +75,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/inference',
-    label: '地表真值推理',
+    label: '推理管理',
     icon: <Zap className="w-5 h-5" />,
   },
   {
@@ -72,8 +85,31 @@ const navItems: NavItem[] = [
   },
 ];
 
-const SidebarContent = ({ collapsed }: { collapsed: boolean }) => {
+const SidebarContent = ({ collapsed, onThemeClick }: { collapsed: boolean; onThemeClick?: () => void }) => {
   const location = useLocation();
+  const { theme, setTheme, isDark } = useTheme();
+
+  const cycleTheme = () => {
+    if (theme === 'light') {
+      setTheme('dark');
+    } else if (theme === 'dark') {
+      setTheme('system');
+    } else {
+      setTheme('light');
+    }
+    onThemeClick?.();
+  };
+
+  const getThemeIcon = () => {
+    if (theme === 'light') return <Sun className="w-4 h-4" />;
+    if (theme === 'dark') return <Moon className="w-4 h-4" />;
+    return <Monitor className="w-4 h-4" />;
+  };
+
+  const getThemeLabel = () => {
+    if (theme === 'system') return `系统 (${isDark ? '深' : '浅'})`;
+    return theme === 'light' ? '浅色' : '深色';
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -83,12 +119,12 @@ const SidebarContent = ({ collapsed }: { collapsed: boolean }) => {
         collapsed ? "justify-center px-2" : "justify-between px-4"
       )}>
         {!collapsed && (
-          <span className="font-semibold text-lg text-foreground">高光谱图像分析系统</span>
+          <span className="font-semibold text-lg text-foreground">云眼巡田分析系统</span>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4">
+      <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
           {navItems.map((item) => (
             <li key={item.path}>
@@ -111,6 +147,25 @@ const SidebarContent = ({ collapsed }: { collapsed: boolean }) => {
           ))}
         </ul>
       </nav>
+
+      {/* Theme Toggle */}
+      <div className={cn(
+        "p-2 border-t border-border",
+        collapsed ? "px-1" : "px-3"
+      )}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={cycleTheme}
+          className={cn(
+            "w-full justify-start gap-3",
+            collapsed && "justify-center px-2"
+          )}
+        >
+          {getThemeIcon()}
+          {!collapsed && <span className="text-sm">{getThemeLabel()}</span>}
+        </Button>
+      </div>
 
       {/* Footer */}
       <div className={cn(
@@ -135,32 +190,17 @@ const MainLayout: React.FC = () => {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { theme, setTheme, isDark } = useTheme();
+  const navigate = useNavigate();
+  const { user, isLoading: userLoading, logout } = useUser();
 
   const getPageTitle = () => {
     const item = navItems.find(item => item.path === location.pathname);
     return item?.label || 'HSI 系统';
   };
 
-  const cycleTheme = () => {
-    if (theme === 'light') {
-      setTheme('dark');
-    } else if (theme === 'dark') {
-      setTheme('system');
-    } else {
-      setTheme('light');
-    }
-  };
-
-  const getThemeIcon = () => {
-    if (theme === 'light') return <Sun className="w-5 h-5" />;
-    if (theme === 'dark') return <Moon className="w-5 h-5" />;
-    return <Monitor className="w-5 h-5" />;
-  };
-
-  const getThemeLabel = () => {
-    if (theme === 'system') return `跟随系统 (${isDark ? '深色' : '浅色'})`;
-    return theme === 'light' ? '浅色' : '深色';
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
@@ -191,7 +231,7 @@ const MainLayout: React.FC = () => {
       {/* Mobile Sidebar */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="md:hidden absolute top-3 left-3">
+          <Button variant="ghost" size="icon" className="md:hidden absolute top-3 left-3 z-50">
             <Menu className="w-5 h-5" />
           </Button>
         </SheetTrigger>
@@ -204,15 +244,59 @@ const MainLayout: React.FC = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
-          <h1 className="text-xl font-semibold text-foreground">{getPageTitle()}</h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={cycleTheme}
-            title={`主题: ${getThemeLabel()}`}
-          >
-            {getThemeIcon()}
-          </Button>
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-semibold text-foreground">{getPageTitle()}</h1>
+          </div>
+          
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.username} className="w-8 h-8 rounded-full" />
+                ) : (
+                  <User className="w-5 h-5" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {user ? (
+                <>
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{user.username}</p>
+                      {user.email && (
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/settings')}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>设置</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>个人资料</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>退出登录</span>
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuLabel>未登录</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/login')}>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    <span>登录</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
 
         {/* Content */}

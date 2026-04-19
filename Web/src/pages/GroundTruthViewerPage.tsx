@@ -16,6 +16,7 @@ import {
 import type { GroundTruthMatrix, GroundTruthStats } from '@/types/groundTruth';
 import SpectralStatsChart from '@/components/SpectralStatsChart';
 import ImageViewer from '@/components/ImageViewer';
+import GtClassDistribution from '@/components/GtClassDistribution';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -220,35 +221,50 @@ const GroundTruthViewerPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Legend */}
+              {/* Legend & Distribution - Shared Scroll Area */}
               <div className="lg:col-span-1">
                 <div className="flex items-center gap-2 mb-3">
                   <Palette className="h-4 w-4" />
                   <h3 className="text-sm font-medium">类别图例</h3>
                 </div>
-                <div className="space-y-2 max-h-[450px] overflow-y-auto">
-                  {Array.from({ length: maskMatrix.numClasses }, (_, i) => i).map((index) => {
-                    const info = getLabelInfo(index);
-                    return (
-                      <div
-                        key={index}
-                        className="flex items-center gap-2 p-2 rounded-md bg-muted/50"
-                      >
+                <div className="max-h-[450px] overflow-y-auto space-y-4">
+                  {/* Legend List */}
+                  <div className="space-y-2">
+                    {Array.from({ length: maskMatrix.numClasses }, (_, i) => i).map((index) => {
+                      const info = getLabelInfo(index);
+                      return (
                         <div
-                          className="w-4 h-4 rounded border border-border flex-shrink-0"
-                          style={{ backgroundColor: info.color }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate">
-                            {info.name}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            索引: {index}
-                          </p>
+                          key={index}
+                          className="flex items-center gap-2 p-2 rounded-md bg-muted/50"
+                        >
+                          <div
+                            className="w-4 h-4 rounded border border-border flex-shrink-0"
+                            style={{ backgroundColor: info.color }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">
+                              {info.name}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              索引: {index}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+
+                  {/* Class Distribution */}
+                  <div className="border-t pt-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Layers className="h-4 w-4" />
+                      <h3 className="text-sm font-medium">类别分布</h3>
+                    </div>
+                    <GtClassDistribution
+                      matrix={maskMatrix}
+                      height="200px"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

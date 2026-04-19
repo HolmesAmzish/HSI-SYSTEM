@@ -13,8 +13,10 @@ import type {
   InferenceResult,
 } from '@/types/inference';
 import type { ModelType, ModelParameters } from '@/types/inference';
+import type { HsiImage, PageResponse } from '@/types/hsi';
 
 const API_BASE = '/api/inference';
+const HSI_API_BASE = '/api/hsi';
 
 /**
  * Available models with their default configurations
@@ -129,6 +131,35 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     },
   },
 ];
+
+/**
+ * Get all HSI images for inference selection
+ */
+export async function getHsiList(
+  page: number = 0,
+  size: number = 20
+): Promise<PageResponse<HsiImage>> {
+  const response = await fetch(`${HSI_API_BASE}?page=${page}&size=${size}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch HSI list: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/**
+ * Trigger inference task for a specific HSI
+ * @param id HSI image ID
+ * @returns Task result message
+ */
+export async function triggerInferenceTask(id: number): Promise<string> {
+  const response = await fetch(`${HSI_API_BASE}/inference/${id}`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to trigger inference task: ${response.statusText}`);
+  }
+  return await response.text();
+}
 
 /**
  * Get all inference tasks with pagination

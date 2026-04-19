@@ -58,7 +58,6 @@ public class HyperspectralImageController {
     }
 
     /**
-     * Get a false-color RGB image from the hyperspectral image.
      * @param id         HSI ID
      * @param redBand    Red band index (optional, default 25% of bands)
      * @param greenBand  Green band index (optional, default 50% of bands)
@@ -86,8 +85,6 @@ public class HyperspectralImageController {
 
     /**
      * Trigger PCA task for a hyperspectral image.
-     * Sends a PCA task to Redis MQ for Python worker to process.
-     *
      * @param id HSI ID
      * @return Task ID
      */
@@ -101,9 +98,6 @@ public class HyperspectralImageController {
     }
 
     /**
-     * Get PCA point cloud data for 3D visualization.
-     * Returns XYZ coordinates from PCA-reduced 3 channels with optional GT labels.
-     *
      * @param id   HSI ID
      * @param gtId Ground truth ID (optional)
      * @return PcaPointCloud DTO
@@ -114,5 +108,15 @@ public class HyperspectralImageController {
             @RequestParam(value = "gtId", required = false) Long gtId) {
         PcaPointCloud pointCloud = hsiService.getPcaPointCloud(id, gtId);
         return ResponseEntity.ok(pointCloud);
+    }
+
+    /**
+     * Mock api for inference
+     * @param id
+     * @return
+     */
+    @PostMapping("/inference/{id}")
+    public ResponseEntity<String> triggerInferenceTask(@PathVariable Long id) {
+        return ResponseEntity.ok("Inference task triggered successfully for " + id);
     }
 }
